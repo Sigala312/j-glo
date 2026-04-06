@@ -35,16 +35,30 @@ enum Role {
   USER // 一般員工：僅能查看或編輯部分內容
 }
 
+model Client {
+  id   String @id @default(cuid())
+  name String @unique // 客戶名稱 (例如：國泰人壽)
+
+  // 一個客戶可以有多個專案
+  projects Project[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 // 專案模型
 model Project {
   id        String @id @default(cuid())
   projectNo String @unique // 專案編號
   name      String // 專案名稱
-  customer  String // 客戶名稱
 
+  status    ProjectStatus @default(UNFILLED)
+  // 關聯到 Client
+  clientId  String
+  client    Client        @relation(fields: [clientId], references: [id])
   // 建立者
   creatorId String
-  creator   User   @relation("ProjectCreator", fields: [creatorId], references: [id])
+  creator   User          @relation("ProjectCreator", fields: [creatorId], references: [id])
 
   // 關聯到訂單 (一對一：一個專案對應一筆待處理訂單)
   order Order?
@@ -115,4 +129,10 @@ model Session {
   userId       String
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum ProjectStatus {
+  UNFILLED // 未填寫：剛建立專案，尚未填寫任何採購單或金額
+  FILLED // 已填寫：員工已填寫採購單，或初步資料已齊全
+  COMPLETED // 完成：管理員已確認金額並結案
 }
