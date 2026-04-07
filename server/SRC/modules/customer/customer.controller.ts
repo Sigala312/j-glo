@@ -21,3 +21,32 @@ export const createCustomer = async (req: Request, res: Response) => {
     res.status(500).json({ message: "新增客戶失敗" });
   }
 };
+
+export const updateClient = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { name } = req.body;
+
+    if (!id) {
+      return res.status(400).json({ error: "缺少客戶 ID" });
+    }
+
+    if (!name || typeof name !== "string") {
+      return res.status(400).json({ error: "請提供有效的客戶名稱" });
+    }
+
+    const updatedClient = await customerService.updateClient(
+      id as string,
+      name,
+    );
+    res.json(updatedClient);
+  } catch (error: any) {
+    if (error.message === "CLIENT_NOT_FOUND") {
+      return res.status(404).json({ error: "找不到該客戶" });
+    }
+    if (error.message === "CLIENT_NAME_EXISTS") {
+      return res.status(400).json({ error: "該客戶名稱已存在" });
+    }
+    res.status(500).json({ error: "更新客戶失敗" });
+  }
+};

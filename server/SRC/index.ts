@@ -2,7 +2,8 @@ import express, { Express, Request, Response } from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import authRoutes from "./modules/auth/auth.route.js";
-// import projectRoutes from "./routes/project.route";
+import customerRoutes from "./modules/customer/customer.route.js"
+ import projectRoutes from "./modules/project/project.route.js";
 // import orderRoutes from "./routes/order.route";
 
 // 1. 初始化環境變數 (讀取 .env 檔案)
@@ -18,6 +19,11 @@ app.use(cors({
   credentials: true
 }));
 
+app.use((req, res, next) => {
+  console.log(`[Incoming Request]: ${req.method} ${req.url}`);
+  next();
+});
+
 // 解析 JSON 格式的 Request Body
 app.use(express.json());
 
@@ -28,9 +34,8 @@ app.get("/", (req: Request, res: Response) => {
 
 // 認證相關 (Google Login / Me)
 app.use("/api/auth", authRoutes);
-
-// 專案相關 (建立專案等)
-// app.use("/api/projects", projectRoutes);
+app.use("/api/customer", customerRoutes);
+app.use("/api/projects", projectRoutes);
 
 // 訂單相關 (管理員修改金額)
 // app.use("/api/orders", orderRoutes);

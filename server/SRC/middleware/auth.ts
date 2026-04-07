@@ -1,18 +1,22 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
+import { Role } from "@prisma/client";
 
-const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key";
+const JWT_SECRET = (process.env.JWT_SECRET || "MAX&CHLOE") as string;
 
 export const authenticateJWT = (req: Request, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
 
-  if (authHeader) {
-    const token = authHeader.split(" ")[1]; // 格式: Bearer <TOKEN>
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    const token = authHeader.split(" ")[1];
 
-    jwt.verify(token, JWT_SECRET, (err, user) => {
-      if (err) return res.status(403).json({ error: "Token 無效或已過期" });
+    jwt.verify(token, JWT_SECRET as string, (err, decoded) => {
+      if (err) {
+        return res.status(403).json({ error: "Token 無效或已過期" });
+      }
       
-      req.user = user as any; // 將解出來的資訊塞入 req.user
+      // 這裡現在會有型別提示了，不再需要 as any
+      req.user = decoded as { id: string; email: string; role: Role }; 
       next();
     });
   } else {
@@ -20,10 +24,10 @@ export const authenticateJWT = (req: Request, res: Response, next: NextFunction)
   }
 };
 
-// 角色檢查中間件
-export const authorizeRole = (role: "ADMIN") => {
+export const authorizeRole = (role: Role) => {
   return (req: Request, res: Response, next: NextFunction) => {
-    if (req.user?.role !== role) {
+    // 因為擴充了 Request，這裡 req.user?.role 不會再報錯
+    if (!req.user || req.user.role !== role) {
       return res.status(403).json({ error: "權限不足，僅限管理員操作" });
     }
     next();

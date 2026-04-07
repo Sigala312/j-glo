@@ -20,5 +20,23 @@ export const customerService = {
       throw new Error("CLIENT_EXISTS");
     }
     return await prisma.client.create({ data: { name } });
+  },
+
+  async updateClient(id: string, name: string) {
+    // 1. 檢查該 ID 是否存在
+    const client = await prisma.client.findUnique({ where: { id } });
+    if (!client) throw new Error("CLIENT_NOT_FOUND");
+
+    // 2. 檢查新名稱是否已被其他客戶佔用
+    const existing = await prisma.client.findUnique({ where: { name } });
+    if (existing && existing.id !== id) {
+      throw new Error("CLIENT_NAME_EXISTS");
+    }
+
+    // 3. 執行更新
+    return await prisma.client.update({
+      where: { id },
+      data: { name },
+    });
   }
 };

@@ -45,7 +45,7 @@ const TechHeroContent = () => {
         if (user.role === 'ADMIN') {
           router.push('/admin/dashboard');
         } else {
-          router.push('/projects');
+          router.push('/Dashboard');
         }
       } catch (error) {
         console.error("Backend Auth Error:", error);
@@ -56,6 +56,8 @@ const TechHeroContent = () => {
     },
     onError: () => console.log('Google Login Failed'),
   });
+
+  
 
   return (
     <div className="relative min-h-screen w-full bg-[#0a0a0a] overflow-hidden flex flex-col items-center justify-center font-mono text-slate-400">

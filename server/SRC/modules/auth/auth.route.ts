@@ -1,10 +1,10 @@
 import { Router } from "express";
-import { AuthController } from "./auth.controller";
-import { authenticateJWT } from "../../middleware/auth";
-import { validate } from "../../middleware/validate"; // 這是通用的 Zod 驗證中間件
-import { LoginSchema } from "./auth.schema";
+import { AuthController } from "./auth.controller.js";
+import { authenticateJWT } from "../../middleware/auth.js";
+import { validate } from "../../middleware/validate.js"; // 這是通用的 Zod 驗證中間件
+import { LoginSchema } from "./auth.schema.js";
 
-const router = Router();
+const router: Router = Router();
 
 // 登入接口
 router.post("/google-login", validate(LoginSchema), AuthController.googleLogin);

@@ -1,8 +1,9 @@
 import { Request, Response } from "express";
-import { AuthService } from "./auth.service";
+import { AuthService } from "./auth.service.js";
 
 export class AuthController {
   static async googleLogin(req: Request, res: Response) {
+    console.log("📥 收到登入請求！Body內容:", req.body);
     try {
       const { idToken } = req.body; // 前端傳來的 Google Token
       if (!idToken) return res.status(400).json({ error: "缺少 Google Token" });

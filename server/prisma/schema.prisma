@@ -15,8 +15,9 @@ model User {
   emailVerified DateTime?
   image         String?
 
+  googleId String? @unique
   // 權限角色：預設為一般員工 (USER)
-  role Role @default(USER)
+  role     Role    @default(USER)
 
   // 關聯到第三方登入的帳戶 (NextAuth 必備)
   accounts Account[]
