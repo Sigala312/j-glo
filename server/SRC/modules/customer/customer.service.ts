@@ -22,6 +22,23 @@ export const customerService = {
     return await prisma.client.create({ data: { name } });
   },
 
+  async findOne(id: string) {
+  return await prisma.client.findUnique({
+    where: { id },
+    include: {
+      projects: {
+        orderBy: { createdAt: 'desc' },
+        // include: {
+        //   // 如果你的 Project 與 Quote 有關聯，這樣寫可以抓到數量
+        //   _count: {
+        //     select: { quotes: true } 
+        //   }
+        // }
+      }
+    }
+  });
+},
+
   async updateClient(id: string, name: string) {
     // 1. 檢查該 ID 是否存在
     const client = await prisma.client.findUnique({ where: { id } });

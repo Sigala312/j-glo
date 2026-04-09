@@ -3,7 +3,8 @@ import cors from "cors";
 import dotenv from "dotenv";
 import authRoutes from "./modules/auth/auth.route.js";
 import customerRoutes from "./modules/customer/customer.route.js"
- import projectRoutes from "./modules/project/project.route.js";
+import projectRoutes from "./modules/project/project.route.js";
+import purchaseOrderRoutes from "./modules/PurchaseOrder/purchaseOrder.routes.js";
 // import orderRoutes from "./routes/order.route";
 
 // 1. 初始化環境變數 (讀取 .env 檔案)
@@ -36,7 +37,7 @@ app.get("/", (req: Request, res: Response) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/customer", customerRoutes);
 app.use("/api/projects", projectRoutes);
-
+app.use("/api/purchaseOrder", purchaseOrderRoutes);
 // 訂單相關 (管理員修改金額)
 // app.use("/api/orders", orderRoutes);
 

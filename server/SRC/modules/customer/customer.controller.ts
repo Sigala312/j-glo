@@ -1,12 +1,34 @@
 import { Request, Response } from "express";
 import { customerService } from "./customer.service.js";
 
+
 export const getCustomers = async (req: Request, res: Response) => {
   try {
     const clients = await customerService.getAllCustomers();
     res.json(clients);
   } catch (error) {
     res.status(500).json({ message: "取得客戶列表失敗" });
+  }
+};
+
+export const getCustomerById = async (req: Request, res: Response) => {
+  try {
+    // 直接從 params 拿到 id 並告訴 TS 它是字串
+    const id = req.params.id as string;
+
+    if (!id) {
+      return res.status(400).json({ message: "ID_REQUIRED" });
+    }
+
+    const customer = await customerService.findOne(id);
+    
+    if (!customer) {
+      return res.status(404).json({ message: "CLIENT_NOT_FOUND" });
+    }
+
+    res.status(200).json(customer);
+  } catch (error) {
+    res.status(500).json({ error: "INTERNAL_SERVER_ERROR" });
   }
 };
 
