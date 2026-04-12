@@ -43,7 +43,7 @@ const TechHeroContent = () => {
         
         // 根據角色導向不同頁面
         if (user.role === 'ADMIN') {
-          router.push('/admin/dashboard');
+          router.push('/ADMIN');
         } else {
           router.push('/Dashboard');
         }

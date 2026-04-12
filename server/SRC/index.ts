@@ -1,8 +1,11 @@
 import express, { Express, Request, Response } from "express"; 
 import cors from "cors";
 import dotenv from "dotenv";
+import path from 'path';
 import authRoutes from "./modules/auth/auth.route.js";
-import customerRoutes from "./modules/customer/customer.route.js"
+import attachmentRoutes from './modules/Attachment/attachment.routes.js'; // 確保路徑正確
+import customerRoutes from "./modules/customer/customer.route.js";
+import orderRoutes from "./modules/order/order.routes.js";
 import projectRoutes from "./modules/project/project.route.js";
 import purchaseOrderRoutes from "./modules/PurchaseOrder/purchaseOrder.routes.js";
 // import orderRoutes from "./routes/order.route";
@@ -28,6 +31,8 @@ app.use((req, res, next) => {
 // 解析 JSON 格式的 Request Body
 app.use(express.json());
 
+
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 // 3. 路由註冊 (Routes)
 app.get("/", (req: Request, res: Response) => {
   res.send("J-GLOBAL API Server is running...");
@@ -35,11 +40,12 @@ app.get("/", (req: Request, res: Response) => {
 
 // 認證相關 (Google Login / Me)
 app.use("/api/auth", authRoutes);
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 app.use("/api/customer", customerRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api/purchaseOrder", purchaseOrderRoutes);
 // 訂單相關 (管理員修改金額)
-// app.use("/api/orders", orderRoutes);
+ app.use("/api/order", orderRoutes);
 
 // 4. 啟動伺服器
 app.listen(PORT, () => {
