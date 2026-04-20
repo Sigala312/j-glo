@@ -11,14 +11,17 @@ export class PurchaseInvoiceController {
     }
   }
 
-  static async getAll(req: Request, res: Response) {
-    try {
-      const result = await PurchaseInvoiceService.findAll();
-      res.json(result);
-    } catch (error: any) {
-      res.status(500).json({ message: "讀取採購發票失敗", error: error.message });
-    }
+ static async getAll(req: Request, res: Response) {
+  try {
+    // 🚀 這裡要對應前端傳來的變數名稱 purchaseOrderId
+    const { purchaseOrderId } = req.query; 
+    
+    const result = await PurchaseInvoiceService.findAll(purchaseOrderId as string);
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ message: "讀取失敗", error: error.message });
   }
+}
 
   static async updateStatus(req: Request, res: Response) {
     try {

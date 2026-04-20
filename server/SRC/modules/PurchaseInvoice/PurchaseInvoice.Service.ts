@@ -19,19 +19,17 @@ export class PurchaseInvoiceService {
   /**
    * 取得所有採購發票（包含關聯的採購單與供應商）
    */
-  static async findAll() {
-    return await prisma.purchaseInvoice.findMany({
-      include: {
-        purchaseOrder: {
-          include: {
-            // 假設你的 PO 有關聯供應商，這裡可以抓出來顯示在前端
-            // supplier: true,
-          },
-        },
-      },
-      orderBy: { createdAt: "desc" },
-    });
-  }
+  static async findAll(purchaseOrderId?: string) {
+  return await prisma.purchaseInvoice.findMany({
+    where: purchaseOrderId ? {
+      purchaseOrderId: purchaseOrderId // 🚀 這裡進行過濾
+    } : {},
+    include: {
+      purchaseOrder: true,
+    },
+    orderBy: { createdAt: "desc" },
+  });
+}
 
   /**
    * 更新發票狀態 (例如：改為 PAID)

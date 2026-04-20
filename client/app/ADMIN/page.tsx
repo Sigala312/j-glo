@@ -10,6 +10,7 @@ import {
   Users,
   Briefcase,
   FileText,
+  Receipt
 } from "lucide-react";
 import {
   XAxis,
@@ -38,6 +39,7 @@ export default function DashboardPage() {
   const [annualInvoiceTotal, setAnnualInvoiceTotal] = useState(0);
   const [totalRevenue, setTotalRevenue] = useState(0); // 實質收入 (Paid Invoices)
   const [annualCost, setAnnualCost] = useState(0);
+  const [annualPurchaseInvoiceTotal, setAnnualPurchaseInvoiceTotal] = useState(0);
 
   useEffect(() => {
     const fetchAllDashboardData = async () => {
@@ -47,12 +49,13 @@ export default function DashboardPage() {
         const headers = { Authorization: `Bearer ${token}` };
 
         // 🚀 同步抓取：過期發票、所有專案(算訂單)、所有發票(算總開立額)
-        const [overdueRes, ordersRes, allInvoicesRes, purchaseRes] =
+        const [overdueRes, ordersRes, allInvoicesRes, purchaseRes, purchaseInvoiceRes] =
           await Promise.all([
             axios.get("http://localhost:5000/api/Invoice/overdue", { headers }),
             axios.get("http://localhost:5000/api/order", { headers }),
             axios.get("http://localhost:5000/api/Invoice", { headers }), // 假設這是抓取所有發票的 API
             axios.get("http://localhost:5000/api/PurchaseOrder", { headers }),
+            axios.get("http://localhost:5000/api/purchaseInvoice", { headers }),
           ]);
 
         const currentYear = 2026;
@@ -114,6 +117,13 @@ export default function DashboardPage() {
         }, 0);
 
         setAnnualCost(costTotal);
+
+        const piTotal = purchaseInvoiceRes.data.reduce((sum: number, inv: any) => {
+  return new Date(inv.createdAt).getFullYear() === currentYear
+    ? sum + (Number(inv.amount) || 0)
+    : sum;
+}, 0);
+setAnnualPurchaseInvoiceTotal(piTotal);
       } catch (err) {
         console.error("Dashboard 資料抓取失敗:", err);
       } finally {
@@ -165,6 +175,12 @@ export default function DashboardPage() {
           color="text-rose-400"
           //  percent="+2.1%"
         />
+        <StatCard
+    title="採購發票總額"
+    value={loading ? "---" : `$${annualPurchaseInvoiceTotal.toLocaleString()}`}
+    icon={Receipt}
+    color="text-rose-400"
+  />
       </div>
 
       {/* 下面兩個大區塊 (7:3) */}

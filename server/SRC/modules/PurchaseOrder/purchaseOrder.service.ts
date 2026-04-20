@@ -54,12 +54,12 @@ export const getPOsByProject = async (projectId: string) => {
 };
 
 // 取得單筆採購單詳情
-export const getPOById = async (id: string) => {
-  return await prisma.purchaseOrder.findUnique({
-    where: { id },
-    include: { project: true } // 連帶抓出專案資訊
-  });
-};
+// export const getPOById = async (id: string) => {
+//   return await prisma.purchaseOrder.findUnique({
+//     where: { id },
+//     include: { project: true } 
+//   });
+// };
 
 // 更新採購單 (Patch)
 export const updatePurchaseOrder = async (id: string, updateData: any) => {
@@ -74,5 +74,16 @@ export const updatePurchaseOrder = async (id: string, updateData: any) => {
 export const deletePurchaseOrder = async (id: string) => {
   return await prisma.purchaseOrder.delete({
     where: { id }
+  });
+};
+
+export const getPOById = async (id: string) => {
+  return await prisma.purchaseOrder.findUnique({
+    where: { id },
+    include: {
+      // 🚀 這裡很重要！要把這筆 PO 旗下的所有發票一起抓出來
+      purchaseInvoices: true, 
+      project: true, // 選配：如果想顯示專案名稱也可以抓
+    },
   });
 };

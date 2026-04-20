@@ -42,4 +42,21 @@ export const removePO = async (req: Request, res: Response) => {
   } catch (error) {
     res.status(500).json({ error: "DELETE_PO_FAILED" });
   }
+
+
+};
+
+export const getPODetail = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params; // 從路徑 /api/purchaseOrder/:id 拿 ID
+    const po = await poService.getPOById(id as string);
+    
+    if (!po) {
+      return res.status(404).json({ error: "PURCHASE_ORDER_NOT_FOUND" });
+    }
+    
+    res.json(po);
+  } catch (error) {
+    res.status(500).json({ error: "FETCH_PO_DETAIL_FAILED" });
+  }
 };

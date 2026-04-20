@@ -103,9 +103,9 @@ model PurchaseOrder {
   projectId String
   project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
-  attachments     Attachment[] // 一個專案可以有多個附件
-  remarks         PurchaseOrderRemark[]
-  purcaseInvoices PurchaseInvoice[]
+  attachments      Attachment[] // 一個專案可以有多個附件
+  remarks          PurchaseOrderRemark[]
+  purchaseInvoices PurchaseInvoice[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

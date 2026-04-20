@@ -12,5 +12,6 @@ router.post("/", poController.addPurchaseOrder);      // 新增
 router.get("/", poController.getProjectPOs);          // 列表 (可用 ?projectId=xxx 進行過濾)
 router.patch("/:id", poController.updatePO);          // 更新部分欄位
 router.delete("/:id", poController.removePO);        // 刪除
+router.get("/:id", poController.getPODetail);
 
 export default router;

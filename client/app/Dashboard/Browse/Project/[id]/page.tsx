@@ -189,10 +189,17 @@ const [remarkContent, setRemarkContent] = useState("");
                   <p className="text-[10px] text-blue-400/70">{po.vendor}</p>
                 </div>
                 <div className="text-right flex flex-col items-end gap-2">
+                  <button 
+      onClick={() => router.push(`/Dashboard/Browse/purchase-invoices/${po.id}`)}
+      className="transition-colors p-1.5 rounded-sm hover:bg-slate-800 group/inv"
+      title="管理發票"
+    >
+      <Receipt size={14} className="text-blue-400 group-hover/inv:text-white" />
+    </button>
 <div className="flex items-center gap-3">
       {/* 🚀 備註 Icon 邏輯 */}
       <button 
-        onClick={() => setSelectedPoForRemark(po)} // 假設你有設一個 state 存選中的 PO
+         onClick={() => setSelectedPoForRemark(po)}
         className="transition-colors p-1 rounded-sm hover:bg-slate-800"
       >
         {po.remarks && po.remarks.length > 0 ? (
