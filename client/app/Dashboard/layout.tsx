@@ -92,7 +92,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             className="flex items-center gap-3 text-xs text-slate-600 hover:text-red-400 transition-colors tracking-tighter"
           >
             <LogOut size={16} />
-            <span>TERMINATE_SESSION</span>
+            <span>登出</span>
           </button>
         </div>
       </aside>

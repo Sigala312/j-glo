@@ -50,4 +50,23 @@ export class AttachmentController {
     return res.status(500).json({ error: "讀取檔案清單失敗" });
   }
 }
+
+static async getByTarget(req: Request, res: Response) {
+    try {
+      const { targetId, targetType } = req.query;
+      
+      if (!targetId || !targetType) {
+        return res.status(400).json({ error: "Missing parameters" });
+      }
+
+      const list = await AttachmentService.getAttachmentsByTarget(
+        targetId as string, 
+        targetType as "ORDER" | "PURCHASE_ORDER"
+      );
+      
+      res.json(list);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to fetch attachments" });
+    }
+  }
 }

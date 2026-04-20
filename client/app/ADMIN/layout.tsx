@@ -3,22 +3,33 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { 
   LayoutDashboard, 
   Receipt, 
   HardHat, 
-  ChevronRight 
+  ChevronRight ,
+  LogOut
 } from 'lucide-react';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
 
   const navItems = [
     { icon: LayoutDashboard, label: "儀表板", href: "/ADMIN" },
     { icon: Receipt, label: "訂單", href: "/ADMIN/Order" },
     { icon: HardHat, label: "工程", href: "/Dashboard/Projects" },
   ];
+
+  const handleLogout = () => {
+    // 1. 清除憑證
+    localStorage.removeItem('token');
+    
+    // 2. 強制跳轉回首頁 (或登入頁)
+    // 使用 window.location.href 可以確保 React State 徹底重置，更安全
+    window.location.href = '/';
+  };
 
   return (
     <div className="flex h-screen bg-[#020617] text-slate-200 overflow-hidden">
@@ -53,6 +64,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             );
           })}
         </nav>
+
+        <div className="mt-auto pt-6 border-t border-slate-800/50">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-4 py-3 text-slate-500 hover:text-red-400 hover:bg-red-500/5 transition-all group rounded-sm"
+          >
+            <LogOut size={18} className="text-slate-600 group-hover:text-red-400 group-hover:-translate-x-1 transition-transform" />
+            <span className="text-sm font-bold tracking-tighter">登出</span>
+          </button>
+        </div>
       </aside>
 
       {/* 右側主內容容器 */}

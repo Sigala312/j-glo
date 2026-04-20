@@ -116,7 +116,7 @@ const TechHeroContent = () => {
                 whileTap={{ scale: 0.95 }}
                 className="px-12 py-3 border border-slate-700 text-slate-200 tracking-[0.2em] uppercase text-sm transition-colors duration-300 backdrop-blur-sm"
               >
-                Access
+                登入
               </motion.button>
 
               <motion.button
@@ -125,7 +125,7 @@ const TechHeroContent = () => {
                 whileTap={{ scale: 0.95 }}
                 className="px-12 py-3 bg-blue-600 text-white tracking-[0.2em] uppercase text-sm font-bold transition-all duration-300"
               >
-                Initialize
+                註冊
               </motion.button>
             </div>
           </motion.div>

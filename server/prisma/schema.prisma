@@ -85,8 +85,9 @@ model Order {
 
   attachments Attachment[] // 一個專案可以有多個附件
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  invoices  Invoice[]
 }
 
 // 採購單模型 (員工負責)
@@ -94,7 +95,7 @@ model PurchaseOrder {
   id       String @id @default(cuid())
   poNumber String @unique // 採購單號
   item     String // 品項
-  quantity Int // 數量
+  // quantity Int 
   vendor   String // 供應廠商名稱
   amount   Float
 
@@ -102,7 +103,22 @@ model PurchaseOrder {
   projectId String
   project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
-  attachments Attachment[] // 一個專案可以有多個附件
+  attachments     Attachment[] // 一個專案可以有多個附件
+  remarks         PurchaseOrderRemark[]
+  purcaseInvoices PurchaseInvoice[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PurchaseOrderRemark {
+  id       String  @id @default(cuid())
+  content  String  @db.Text
+  category String? // 例如：施工、材料、驗收（可選）
+
+  // 🚀 外鍵關聯
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -145,6 +161,34 @@ model Account {
   @@unique([provider, providerAccountId])
 }
 
+model Invoice {
+  id        String @id @default(cuid())
+  invoiceNo String @unique
+  amount    Float // 最終收費金額 (包含階段款 + 額外費用)
+
+  // 狀態與日期
+  status  InvoiceStatus @default(PENDING)
+  dueDate DateTime? // 👈 新增：繳款期限
+  paidAt  DateTime? // 實際收款日
+
+  // 關聯
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PurchaseInvoice {
+  id              String        @id @default(cuid())
+  amount          Float
+  invoiceNo       String? // 供應商開給我們的號碼
+  purchaseOrderId String        @unique
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+  status          String        @default("PENDING") // 我們付錢給供應商了沒
+  createdAt       DateTime      @default(now())
+}
+
 model Session {
   id           String   @id @default(cuid())
   sessionToken String   @unique
@@ -157,4 +201,16 @@ enum ProjectStatus {
   UNFILLED // 未填寫：剛建立專案，尚未填寫任何採購單或金額
   FILLED // 已填寫：員工已填寫採購單，或初步資料已齊全
   COMPLETED // 完成：管理員已確認金額並結案
+}
+
+enum InvoiceStatus {
+  PENDING
+  PAID
+  CANCELLED
+}
+
+enum purchaseInvoiceStatus {
+  PENDING
+  PAID
+  CANCELLED
 }

@@ -3,7 +3,7 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 export const createPurchaseOrder = async (data: any) => {
-  const { projectId, item, quantity, vendor, amount } = data;
+   const { projectId, item, vendor, amount } = data;
 
   // 1. 取得專案編號 (projectNo)
   const project = await prisma.project.findUnique({
@@ -33,7 +33,7 @@ export const createPurchaseOrder = async (data: any) => {
     data: {
       poNumber,
       item,
-      quantity,
+      // quantity,
       vendor,
       amount,
       projectId
@@ -45,6 +45,10 @@ export const createPurchaseOrder = async (data: any) => {
 export const getPOsByProject = async (projectId: string) => {
   return await prisma.purchaseOrder.findMany({
     where: { projectId },
+    include: {
+      attachments: true ,
+      remarks: true
+    },
     orderBy: { createdAt: 'desc' }
   });
 };

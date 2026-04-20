@@ -31,6 +31,16 @@ export class AttachmentService {
     });
   }
 
+  static async getPurchaseOrders(projectId: string) {
+  return await prisma.purchaseOrder.findMany({
+    where: { projectId },
+    include: {
+      attachments: true,
+    },
+    orderBy: { createdAt: 'desc' }
+  });
+}
+
   static async getAttachmentsByTarget(targetId: string, targetType: "ORDER" | "PURCHASE_ORDER") {
   return await prisma.attachment.findMany({
     where: {

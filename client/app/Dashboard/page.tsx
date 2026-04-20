@@ -70,9 +70,9 @@ export default function DashboardPage() {
     <div className="space-y-8">
       {/* 1-3: 頂部數據概覽 */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <StatusCard title="COMPLETED_NODES" count={projects.completed.length} icon={CheckCircle2} color="text-green-500" />
-        <StatusCard title="PENDING_PROTOCOLS" count={projects.filled.length} icon={AlertCircle} color="text-orange-500" />
-        <StatusCard title="UNFILLED_RECORDS" count={projects.unfilled.length} icon={FileQuestion} color="text-blue-500" />
+        <StatusCard title="完成" count={projects.completed.length} icon={CheckCircle2} color="text-green-500" />
+        <StatusCard title="待處理" count={projects.filled.length} icon={AlertCircle} color="text-orange-500" />
+        <StatusCard title="未填寫" count={projects.unfilled.length} icon={FileQuestion} color="text-blue-500" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

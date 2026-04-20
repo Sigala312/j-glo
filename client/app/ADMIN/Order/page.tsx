@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import Link from 'next/link';
 import { CheckCircle2, Clock, Edit3, Trash2, DollarSign } from 'lucide-react';
 
 export default function OrdersPage() {
@@ -69,6 +70,7 @@ export default function OrdersPage() {
 }
 
 // --- 子元件：待核定列表 ---
+
 function PendingList({ projects, refresh }: any) {
   const [amounts, setAmounts] = useState<any>({});
 
@@ -91,11 +93,18 @@ function PendingList({ projects, refresh }: any) {
       {projects.map((p: any) => (
         <div key={p.id} className="bg-slate-900/40 border border-slate-800 p-5 rounded-sm flex items-center justify-between group">
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-[10px] font-mono text-blue-500 bg-blue-500/10 px-2 py-0.5 rounded-full">{p.projectNo}</span>
-              <h4 className="font-bold text-slate-200">{p.name}</h4>
-            </div>
-            <p className="text-xs text-slate-500">客戶：{p.client?.name || '未指定'}</p>
+            {/* 🚀 讓專案名稱可以點擊跳轉 */}
+            <Link href={`/ADMIN/Invoice/${p.id}`} className="block group">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-[10px] font-mono text-blue-500 bg-blue-500/10 px-2 py-0.5 rounded-full">
+                  {p.projectNo}
+                </span>
+                <h4 className="font-bold text-slate-200 group-hover:text-blue-400 transition-colors">
+                  {p.name}
+                </h4>
+              </div>
+              <p className="text-xs text-slate-500">客戶：{p.client?.name || '未指定'}</p>
+            </Link>
           </div>
           
           <div className="flex items-center gap-4">
@@ -106,6 +115,7 @@ function PendingList({ projects, refresh }: any) {
                 placeholder="輸入核定金額"
                 className="bg-slate-950 border border-slate-700 pl-8 pr-3 py-2 text-sm rounded-sm focus:border-blue-500 outline-none w-40 text-white"
                 onChange={(e) => setAmounts({...amounts, [p.id]: e.target.value})}
+                value={amounts[p.id] || ''} 
               />
             </div>
             <button 
@@ -135,7 +145,7 @@ function CompletedList({ projects, refresh }: any) {
     } catch (err) { alert("刪除失敗"); }
   };
 
-  return (
+ return (
     <div className="overflow-x-auto">
       <table className="w-full border-collapse">
         <thead>
@@ -148,10 +158,15 @@ function CompletedList({ projects, refresh }: any) {
         </thead>
         <tbody className="text-sm">
           {projects.map((p: any) => (
-            <tr key={p.id} className="border-b border-slate-900/50 hover:bg-slate-800/20 transition-colors">
+            <tr key={p.id} className="border-b border-slate-900/50 hover:bg-slate-800/20 transition-colors group">
               <td className="py-4 px-4">
-                <p className="font-bold text-slate-300">{p.name}</p>
-                <p className="text-[10px] font-mono text-slate-600">{p.projectNo}</p>
+                {/* 🚀 點擊專案名稱進入詳細管理頁面 */}
+                <Link href={`/ADMIN/Invoice/${p.id}`} className="block hover:translate-x-1 transition-transform">
+                  <p className="font-bold text-slate-300 group-hover:text-blue-400 transition-colors">
+                    {p.name}
+                  </p>
+                  <p className="text-[10px] font-mono text-slate-600">{p.projectNo}</p>
+                </Link>
               </td>
               <td className="py-4 px-4 text-slate-400">{p.client?.name}</td>
               <td className="py-4 px-4 text-right font-mono text-emerald-400 font-bold">
@@ -159,8 +174,13 @@ function CompletedList({ projects, refresh }: any) {
               </td>
               <td className="py-4 px-4">
                 <div className="flex justify-center gap-3 text-slate-500">
-                  <button onClick={() => alert('此功能可對接 PATCH API')} className="hover:text-blue-400 transition-colors"><Edit3 size={16} /></button>
-                  <button onClick={() => handleDelete(p.order.id)} className="hover:text-rose-500 transition-colors"><Trash2 size={16} /></button>
+                  {/* 🚀 這裡也可以加一個按鈕直接進去管理 */}
+                  <Link href={`/ADMIN/Invoice/${p.id}`} className="hover:text-blue-400 transition-colors">
+                    <Edit3 size={16} />
+                  </Link>
+                  <button onClick={() => handleDelete(p.order.id)} className="hover:text-rose-500 transition-colors">
+                    <Trash2 size={16} />
+                  </button>
                 </div>
               </td>
             </tr>

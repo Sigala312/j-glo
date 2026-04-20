@@ -32,6 +32,22 @@ export class ProjectService {
     });
   }
 
+
+  static async findOne(where: { id: string }) {
+  return await prisma.project.findUnique({
+    where,
+    include: {
+      client: true,
+      purchaseOrders: true,
+      order: {
+        include: {
+          invoices: true // 這樣才能抓到該訂單的所有發票
+        }
+      }
+    }
+  });
+}
+
   static async updateStatus(projectId: string, newStatus: "FILLED" | "COMPLETED") {
     // 1. 查找專案並計算關聯的 PO 數量
     const project = await prisma.project.findUnique({

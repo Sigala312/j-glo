@@ -7,6 +7,8 @@ const router: Router = Router();
 router.get("/all", authenticateJWT, ProjectController.getAllProjects);
 
 router.get("/", authenticateJWT, ProjectController.getProjects);
+
+router.get("/:id", authenticateJWT, ProjectController.getProjectById);
 // 建立專案需要登入
 router.post("/", authenticateJWT, ProjectController.create);
 

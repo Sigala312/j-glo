@@ -66,12 +66,12 @@ export default function CustomersPage() {
           </h1>
         </div>
 
-        <button
+        {/* <button
           onClick={() => router.push("/projects/add")}
           className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 text-xs font-bold tracking-widest flex items-center gap-2 transition-all shadow-[0_0_20px_rgba(37,99,235,0.3)]"
         >
           <Plus size={16} /> NEW_ENTITY
-        </button>
+        </button> */}
       </div>
 
       {/* 搜尋列 */}

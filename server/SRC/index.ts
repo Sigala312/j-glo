@@ -2,13 +2,18 @@ import express, { Express, Request, Response } from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import path from 'path';
+
+import { initCronJobs } from './modules/Invoice/cron.js';
+
 import authRoutes from "./modules/auth/auth.route.js";
 import attachmentRoutes from './modules/Attachment/attachment.routes.js'; // 確保路徑正確
 import customerRoutes from "./modules/customer/customer.route.js";
 import orderRoutes from "./modules/order/order.routes.js";
+import IncoiceRoutes from "./modules/Invoice/Invoice.route.js";
 import projectRoutes from "./modules/project/project.route.js";
 import purchaseOrderRoutes from "./modules/PurchaseOrder/purchaseOrder.routes.js";
-// import orderRoutes from "./routes/order.route";
+import purchaseInvoiceRoutes from "./modules/PurchaseInvoice/purchaseInvoice.Routes.js";
+import remarkRoutes from "./modules/Remark/PurchaseOrderRemark.route.js";
 
 // 1. 初始化環境變數 (讀取 .env 檔案)
 dotenv.config();
@@ -28,6 +33,7 @@ app.use((req, res, next) => {
   next();
 });
 
+
 // 解析 JSON 格式的 Request Body
 app.use(express.json());
 
@@ -40,15 +46,25 @@ app.get("/", (req: Request, res: Response) => {
 
 // 認證相關 (Google Login / Me)
 app.use("/api/auth", authRoutes);
+app.use("/api/attachments", attachmentRoutes);
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 app.use("/api/customer", customerRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api/purchaseOrder", purchaseOrderRoutes);
+app.use("/api/purchaseInvoice", purchaseInvoiceRoutes);
 // 訂單相關 (管理員修改金額)
  app.use("/api/order", orderRoutes);
-
+ app.use("/api/Invoice", IncoiceRoutes);
+ app.use("/api/Remark", remarkRoutes);
 // 4. 啟動伺服器
 app.listen(PORT, () => {
   console.log(`[server]: 🚀 Server is running at http://localhost:${PORT}`);
   console.log(`[server]: 🔧 Mode: ${process.env.NODE_ENV || 'development'}`);
+
+  try {
+    initCronJobs();
+    console.log(`[cron]: ⏰ Automated collection monitoring activated.`);
+  } catch (err) {
+    console.error(`[cron]: ❌ Failed to initialize cron jobs:`, err);
+  }
 });
