@@ -40,6 +40,7 @@ export default function DashboardPage() {
   const [totalRevenue, setTotalRevenue] = useState(0); // 實質收入 (Paid Invoices)
   const [annualCost, setAnnualCost] = useState(0);
   const [annualPurchaseInvoiceTotal, setAnnualPurchaseInvoiceTotal] = useState(0);
+const [uncollectedAmount, setUncollectedAmount] = useState(0);
 
   useEffect(() => {
     const fetchAllDashboardData = async () => {
@@ -118,6 +119,8 @@ export default function DashboardPage() {
 
         setAnnualCost(costTotal);
 
+       setUncollectedAmount(invoiceTotal - paidTotal);
+
         const piTotal = purchaseInvoiceRes.data.reduce((sum: number, inv: any) => {
   return new Date(inv.createdAt).getFullYear() === currentYear
     ? sum + (Number(inv.amount) || 0)
@@ -180,6 +183,12 @@ setAnnualPurchaseInvoiceTotal(piTotal);
     value={loading ? "---" : `$${annualPurchaseInvoiceTotal.toLocaleString()}`}
     icon={Receipt}
     color="text-rose-400"
+  />
+  <StatCard
+    title="待收帳款差異"
+    value={loading ? "---" : `$${uncollectedAmount.toLocaleString()}`}
+    icon={AlertCircle}
+    color="text-orange-400" 
   />
       </div>
 
