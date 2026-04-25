@@ -1,29 +1,37 @@
 import { Request, Response } from "express";
 import { AttachmentService } from "./attachment.service.js";
+import { put } from "@vercel/blob";
 
 export class AttachmentController {
-  static async upload(req: Request, res: Response) {
+ static async upload(req: Request, res: Response) {
     try {
-      const file = req.file;
+      const file = req.file; // multer 處理後的檔案物件
       const { targetId, targetType } = req.body;
 
       if (!file) return res.status(400).json({ error: "未接收到檔案" });
       if (!targetId || !targetType) return res.status(400).json({ error: "缺失目標 ID 或類型" });
 
-      // 辨識檔案類型 (簡單分類)
+      // 2. 將檔案上傳到 Vercel Blob
+      // file.buffer 是 multer 存在記憶體中的資料
+      const blob = await put(file.originalname, file.buffer, {
+        access: 'public',
+      });
+
+      // 辨識檔案類型
       const isExcel = file.mimetype.includes("spreadsheet") || file.originalname.endsWith(".xlsx");
       const fileType = isExcel ? "EXCEL" : "FILE";
 
+      // 3. 使用 blob.url (雲端網址) 存入資料庫
       const attachment = await AttachmentService.createAttachment({
         fileName: file.originalname,
-        fileUrl: `/uploads/${file.filename}`, // 這是對應靜態資源的路徑
+        fileUrl: blob.url, // 這裡從原本的 /uploads/ 改為雲端網址
         fileType,
         targetId,
         targetType,
       });
 
       return res.status(201).json({
-        message: "檔案上傳成功",
+        message: "檔案上傳至雲端成功",
         data: attachment
       });
     } catch (error: any) {

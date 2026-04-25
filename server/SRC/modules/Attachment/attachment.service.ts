@@ -1,4 +1,5 @@
 import { prisma } from "../../lib/prisma.js";
+import { del } from "@vercel/blob";
 
 export class AttachmentService {
   /**
@@ -55,9 +56,19 @@ export class AttachmentService {
    * 刪除附件與實體檔案
    */
   static async deleteAttachment(id: string) {
-    // 這裡可以先撈出 fileUrl 來刪除實體檔案 (fs.unlink)
-    return await prisma.attachment.delete({
-      where: { id },
-    });
+  // 1. 先從資料庫找出該附件的 URL
+  const attachment = await prisma.attachment.findUnique({
+    where: { id }
+  });
+
+  if (attachment?.fileUrl) {
+    // 2. 刪除 Vercel Blob 上的實體檔案
+    await del(attachment.fileUrl);
   }
+
+  // 3. 刪除資料庫紀錄
+  return await prisma.attachment.delete({
+    where: { id },
+  });
+}
 }
