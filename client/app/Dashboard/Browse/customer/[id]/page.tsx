@@ -14,7 +14,7 @@ import {
   FileWarning,
 } from "lucide-react";
 
-import axios from "axios";
+import api from '../../../../lib/api';
 
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -40,20 +40,12 @@ export default function ClientProjectsPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const token = localStorage.getItem("token");
-
-        // 呼叫我們先前改好的 API，包含 customer 資訊
-        const res = await axios.get(
-          `http://localhost:5000/api/customer/${id}`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          },
-        );
+        const res = await api.get(`/api/customer/${id}`);
 
         const data = Array.isArray(res.data) ? res.data[0] : res.data;
-console.log("🔍 原始專案資料內容:", data.projects); // 🔥 加入這行
+        console.log("🔍 原始專案資料內容:", data.projects); 
+        
         setClientName(data?.name || "未知客戶");
-
         setProjects(data?.projects || []);
       } catch (err) {
         console.error("讀取專案失敗", err);

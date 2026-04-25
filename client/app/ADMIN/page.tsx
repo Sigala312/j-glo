@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react"; // 🚀 引入 Hook
-import axios from "axios";
+import api from '../lib/api'; // 或是你放 api.ts 的正確路徑
 import {
   AlertCircle,
   Loader2,
@@ -12,6 +12,7 @@ import {
   FileText,
   Receipt
 } from "lucide-react";
+
 import {
   XAxis,
   YAxis,
@@ -50,14 +51,15 @@ const [uncollectedAmount, setUncollectedAmount] = useState(0);
         const headers = { Authorization: `Bearer ${token}` };
 
         // 🚀 同步抓取：過期發票、所有專案(算訂單)、所有發票(算總開立額)
-        const [overdueRes, ordersRes, allInvoicesRes, purchaseRes, purchaseInvoiceRes] =
-          await Promise.all([
-            axios.get("http://localhost:5000/api/Invoice/overdue", { headers }),
-            axios.get("http://localhost:5000/api/order", { headers }),
-            axios.get("http://localhost:5000/api/Invoice", { headers }), // 假設這是抓取所有發票的 API
-            axios.get("http://localhost:5000/api/PurchaseOrder", { headers }),
-            axios.get("http://localhost:5000/api/purchaseInvoice", { headers }),
-          ]);
+// 修改後的樣子：
+const [overdueRes, ordersRes, allInvoicesRes, purchaseRes, purchaseInvoiceRes] = 
+  await Promise.all([
+    api.get("/api/Invoice/overdue"),
+    api.get("/api/order"),
+    api.get("/api/Invoice"),
+    api.get("/api/PurchaseOrder"),
+    api.get("/api/purchaseInvoice"),
+  ]);
 
         const currentYear = 2026;
 

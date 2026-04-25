@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
-import axios from 'axios';
+import api from '../../lib/api';
 import StepIndicator from './components/StepIndicator';
 import StepClientAuth from './components/StepClientAuth';
 import StepProjectInit from './components/StepProjectInit';
@@ -23,10 +23,8 @@ export default function AddProjectPage() {
   useEffect(() => {
     const fetchCustomers = async () => {
       try {
-        const token = localStorage.getItem('token');
-        const response = await axios.get('http://localhost:5000/api/customer', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        // 🚀 1. 改用 api.get，自動帶 Token，網址簡化
+        const response = await api.get('/api/customer');
         setCustomers(response.data);
       } catch (err) { console.error(err); }
     };
@@ -37,22 +35,19 @@ export default function AddProjectPage() {
   const handleClientSubmit = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
       let finalClientId = formData.clientId;
       let finalClientName = "";
 
       if (!finalClientId) {
-        const res = await axios.post('http://localhost:5000/api/customer', 
-          { name: formData.clientName },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+        // 🚀 2. 改用 api.post，不需要手動 localStorage.getItem
+        const res = await api.post('/api/customer', { name: formData.clientName });
         finalClientId = res.data.id;
         finalClientName = res.data.name;
       } else {
         finalClientName = customers.find(c => c.id === finalClientId)?.name || "UNK";
       }
 
-      // 生成代碼
+      // 生成代碼 (保持不變)
       const prefix = finalClientName.substring(0, 3).toUpperCase();
       const projectNo = `${prefix}-${Math.floor(10000 + Math.random() * 90000)}`;
 
@@ -66,11 +61,12 @@ export default function AddProjectPage() {
   const handleProjectSubmit = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      await axios.post('http://localhost:5000/api/projects', 
-        { name: formData.projectName, projectNo: formData.projectNo, clientId: formData.clientId },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      // 🚀 3. 改用 api.post，移除 headers 區塊
+      await api.post('/api/projects', { 
+        name: formData.projectName, 
+        projectNo: formData.projectNo, 
+        clientId: formData.clientId 
+      });
       setStep(3);
     } catch (err) { alert("專案初始化失敗"); } 
     finally { setLoading(false); }

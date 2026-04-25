@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, use } from "react";
-import axios from "axios";
+import api from '../../../lib/api';
 import {
   ArrowLeft,
   Receipt,
@@ -36,18 +36,12 @@ export default function OrderDetailPage({
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      const token = localStorage.getItem("token");
-      await axios.post(
-        "http://localhost:5000/api/Invoice",
-        {
-          orderId: project.order.id, // 關鍵：發票要掛在訂單下
-          amount: parseFloat(formData.amount),
-          dueDate: formData.dueDate,
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      );
+      // 這裡直接使用 api.post，不需要手動從 localStorage 拿 token
+      await api.post("/api/Invoice", {
+        orderId: project.order.id, 
+        amount: parseFloat(formData.amount),
+        dueDate: formData.dueDate,
+      });
 
       // 成功後重新抓取資料並關閉視窗
       await fetchProjectDetails();
@@ -60,17 +54,15 @@ export default function OrderDetailPage({
     }
   };
 
-  // 處理發票狀態更新為已付款
+// 1. 更新發票狀態
 const handleMarkAsPaid = async (InvoiceId: string) => {
   if (!confirm("確定此發票已入帳嗎？")) return;
 
   try {
-    const token = localStorage.getItem('token');
-    await axios.patch(`http://localhost:5000/api/Invoice/${InvoiceId}/pay`, {}, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    // 改用 api.patch，網址簡化，移除 headers
+    await api.patch(`/api/Invoice/${InvoiceId}/pay`, {});
     
-    // 成功後重新抓取專案詳情以更新列表
+    // 成功後重新抓取專案詳情
     await fetchProjectDetails();
   } catch (err) {
     console.error("Update failed:", err);
@@ -78,21 +70,18 @@ const handleMarkAsPaid = async (InvoiceId: string) => {
   }
 };
 
-  // 取得單一專案詳細資料
-  const fetchProjectDetails = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      // 🚀 2. 使用解開後的 id
-      const res = await axios.get(`http://localhost:5000/api/projects/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setProject(res.data);
-    } catch (err) {
-      console.error("Fetch error:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
+// 2. 取得單一專案詳細資料
+const fetchProjectDetails = async () => {
+  try {
+    // 改用 api.get，使用樣板字串帶入 id，網址簡化，移除 headers
+    const res = await api.get(`/api/projects/${id}`);
+    setProject(res.data);
+  } catch (err) {
+    console.error("Fetch error:", err);
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     fetchProjectDetails();

@@ -5,7 +5,7 @@ import {
   Plus, Receipt, Loader2, CheckCircle2, Save, Upload, 
   FileSpreadsheet, Paperclip, MessageSquare, Eye 
 } from 'lucide-react';
-import axios from 'axios';
+import api from '../../../../lib/api';
 import { useParams, useRouter } from 'next/navigation';
 
 interface Attachment {
@@ -54,16 +54,13 @@ const [remarkContent, setRemarkContent] = useState("");
     if (projectId) fetchPOs();
   }, [projectId]);
 
+  // 1. 取得採購單列表 (GET)
   const fetchPOs = async () => {
     try {
-      const token = localStorage.getItem('token');
-      // 注意：後端 API 的 include: { attachments: true } 必須開啟
-      const res = await axios.get(`http://localhost:5000/api/purchaseOrder?projectId=${projectId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      // 🚀 移除網址全稱與 Token 處理
+      const res = await api.get(`/api/purchaseOrder?projectId=${projectId}`);
 
       console.log("📍 API 回傳的 PO 原始資料:", res.data);
-      
       setPos(res.data);
     } catch (err) {
       console.error("讀取採購單失敗", err);
@@ -72,29 +69,25 @@ const [remarkContent, setRemarkContent] = useState("");
     }
   };
 
-
+  // 2. 新增備註 (POST)
   const handleAddRemark = async () => {
-  if (!remarkContent.trim() || !selectedPoForRemark) return;
-  
-  try {
-    const token = localStorage.getItem('token');
-    await axios.post(`http://localhost:5000/api/Remark`, {
-      purchaseOrderId: selectedPoForRemark.id,
-      content: remarkContent,
-      category: "GENERAL"
-    }, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    if (!remarkContent.trim() || !selectedPoForRemark) return;
     
-    setRemarkContent("");
-    fetchPOs(); // 重新整理列表，Icon 就會從 編輯 變成 眼睛
-    // 如果你想保留 Modal，就不要關閉；或者關閉：setSelectedPoForRemark(null);
-  } catch (err) {
-    alert("備註儲存失敗");
-  }
-};
+    try {
+      await api.post(`/api/Remark`, {
+        purchaseOrderId: selectedPoForRemark.id,
+        content: remarkContent,
+        category: "GENERAL"
+      });
+      
+      setRemarkContent("");
+      fetchPOs(); 
+    } catch (err) {
+      alert("備註儲存失敗");
+    }
+  };
 
-  // 🚀 上傳附件邏輯
+  // 3. 🚀 上傳附件邏輯 (POST + FormData)
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, poId: string) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -106,14 +99,11 @@ const [remarkContent, setRemarkContent] = useState("");
     formData.append("targetType", "PURCHASE_ORDER");
 
     try {
-      const token = localStorage.getItem('token');
-      await axios.post(`http://localhost:5000/api/attachments/upload`, formData, {
-        headers: { 
-          'Content-Type': 'multipart/form-data',
-          Authorization: `Bearer ${token}` 
-        }
+      // 使用 api.post，並保留 multipart/form-data 的 header
+      await api.post(`/api/attachments/upload`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
       });
-      fetchPOs(); // 重新抓取資料以顯示新附件
+      fetchPOs(); 
     } catch (err) {
       alert("檔案上傳失敗");
     } finally {
@@ -121,11 +111,11 @@ const [remarkContent, setRemarkContent] = useState("");
     }
   };
 
+  // 4. 新增採購單 (POST)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!projectId) return alert("CRITICAL_ERROR: Project_ID_Missing");
     try {
-      const token = localStorage.getItem('token');
       const payload = {
         item: formData.item,
         amount: Number(formData.amount),
@@ -133,9 +123,7 @@ const [remarkContent, setRemarkContent] = useState("");
         projectId: projectId
       };
 
-      await axios.post(`http://localhost:5000/api/purchaseOrder`, payload, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.post(`/api/purchaseOrder`, payload);
       setShowAddForm(false);
       setFormData({ item: '', vendor: '', amount: 0 });
       fetchPOs();
@@ -144,15 +132,12 @@ const [remarkContent, setRemarkContent] = useState("");
     }
   };
 
+  // 5. 更新專案狀態 (PATCH)
   const handleUpdateStatus = async (newStatus: "FILLED" | "COMPLETED") => {
     if (pos.length === 0) return alert("目前尚無採購單資料。");
     try {
       setIsUpdating(true);
-      const token = localStorage.getItem('token');
-      await axios.patch(`http://localhost:5000/api/projects/${projectId}/status`, 
-        { status: newStatus },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await api.patch(`/api/projects/${projectId}/status`, { status: newStatus });
       alert(`專案狀態已更新為：${newStatus === 'FILLED' ? '已填寫' : '已完成'}`);
       if (newStatus === 'COMPLETED') router.push('/Dashboard/Browse');
     } catch (err: any) {
@@ -227,21 +212,23 @@ const [remarkContent, setRemarkContent] = useState("");
               </div>
 
               {/* 📂 顯示已上傳檔案 */}
-              {po.attachments && po.attachments.length > 0 && (
-                <div className="mt-3 pt-2 border-t border-slate-800/50 flex flex-wrap gap-2">
-                  {po.attachments.map(file => (
-                    <a 
-                      key={file.id}
-                      href={`http://localhost:5000${file.fileUrl}`}
-                      target="_blank"
-                      className="flex items-center gap-1.5 bg-black/40 border border-slate-800 px-2 py-1 rounded-sm text-[10px] text-slate-400 hover:text-blue-400 hover:border-blue-500/50 transition-all"
-                    >
-                      {file.fileType === 'EXCEL' ? <FileSpreadsheet size={12} className="text-emerald-500" /> : <Paperclip size={12} />}
-                      {file.fileName}
-                    </a>
-                  ))}
-                </div>
-              )}
+             {po.attachments && po.attachments.length > 0 && (
+   <div className="mt-3 pt-2 border-t border-slate-800/50 flex flex-wrap gap-2">
+     {po.attachments.map(file => (
+       <a 
+         key={file.id}
+         /* 🚀 這裡改用環境變數，若沒設定則預設 localhost */
+         href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${file.fileUrl}`}
+         target="_blank"
+         rel="noopener noreferrer" /* 安全性建議加上這行 */
+         className="flex items-center gap-1.5 bg-black/40 border border-slate-800 px-2 py-1 rounded-sm text-[10px] text-slate-400 hover:text-blue-400 hover:border-blue-500/50 transition-all"
+       >
+         {file.fileType === 'EXCEL' ? <FileSpreadsheet size={12} className="text-emerald-500" /> : <Paperclip size={12} />}
+         {file.fileName}
+       </a>
+     ))}
+   </div>
+ )}
             </div>
           ))
         ) : (

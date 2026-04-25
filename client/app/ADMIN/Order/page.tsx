@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../../lib/api';
 import Link from 'next/link';
 import { CheckCircle2, Clock, Edit3, Trash2, DollarSign } from 'lucide-react';
 
@@ -14,10 +14,8 @@ export default function OrdersPage() {
   const fetchOrders = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const res = await axios.get('http://localhost:5000/api/order', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      // 🚀 直接用 api.get，網址縮短，移除 headers
+      const res = await api.get('/api/order');
       setData(res.data);
     } catch (err) {
       console.error("Fetch error:", err);
@@ -79,13 +77,12 @@ function PendingList({ projects, refresh }: any) {
     if (!amount || amount <= 0) return alert("請輸入有效金額");
 
     try {
-      const token = localStorage.getItem('token');
-      await axios.post('http://localhost:5000/api/order/finalize', 
-        { projectId, amount },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await api.post('/api/order/finalize', { projectId, amount });
+      
       refresh();
-    } catch (err) { alert("核定失敗"); }
+    } catch (err) { 
+      alert("核定失敗"); 
+    }
   };
 
   return (
@@ -137,12 +134,13 @@ function CompletedList({ projects, refresh }: any) {
   const handleDelete = async (orderId: string) => {
     if (!confirm("確定要刪除這筆財務紀錄嗎？")) return;
     try {
-      const token = localStorage.getItem('token');
-      await axios.delete(`http://localhost:5000/api/order/${orderId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      // 🚀 改用 api.delete，網址簡化，移除 headers
+      await api.delete(`/api/order/${orderId}`);
+      
       refresh();
-    } catch (err) { alert("刪除失敗"); }
+    } catch (err) { 
+      alert("刪除失敗"); 
+    }
   };
 
  return (

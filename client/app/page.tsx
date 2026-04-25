@@ -4,12 +4,12 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Cpu, ChevronLeft, ShieldCheck, UserPlus } from 'lucide-react';
 import { useGoogleLogin, GoogleOAuthProvider } from '@react-oauth/google';
-import axios from 'axios';
+import api from './lib/api';
 import { useRouter } from 'next/navigation';
 
 // --- 配置區 ---
 const GOOGLE_CLIENT_ID = "303259997714-1fbt0jvi4ri2fnjhusaiur08d0upcnr0.apps.googleusercontent.com";
-const BACKEND_URL = "http://localhost:5000/api/auth/google-login";
+const BACKEND_ENDPOINT = "/api/auth/google-login";
 
 const TechHeroContent = () => {
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
@@ -28,34 +28,34 @@ const TechHeroContent = () => {
 
   // --- Google 登入邏輯 ---
   const loginWithGoogle = useGoogleLogin({
-    onSuccess: async (tokenResponse) => {
-      setLoading(true);
-      try {
-        // 呼叫你的 Express 後端
-        const response = await axios.post(BACKEND_URL, {
-          idToken: tokenResponse.access_token, // 注意：這裡根據後端 verify 邏輯可能需要調整為 credential
-        });
+  onSuccess: async (tokenResponse) => {
+    setLoading(true);
+    try {
+      // 🚀 1. 改用 api.post
+      // 🚀 2. 使用簡短的路徑
+      const response = await api.post(BACKEND_ENDPOINT, {
+        idToken: tokenResponse.access_token, 
+      });
 
-        const { token, user } = response.data;
+      const { token, user } = response.data;
 
-        // 儲存 JWT 到本地
-        localStorage.setItem('token', token);
-        
-        // 根據角色導向不同頁面
-        if (user.role === 'ADMIN') {
-          router.push('/ADMIN');
-        } else {
-          router.push('/Dashboard');
-        }
-      } catch (error) {
-        console.error("Backend Auth Error:", error);
-        alert("登入失敗，請檢查後端連線或 Google 配置");
-      } finally {
-        setLoading(false);
+      // 儲存 JWT 到本地 (這是 api.ts 攔截器之後會去抓的地方)
+      localStorage.setItem('token', token);
+      
+      if (user.role === 'ADMIN') {
+        router.push('/ADMIN');
+      } else {
+        router.push('/Dashboard');
       }
-    },
-    onError: () => console.log('Google Login Failed'),
-  });
+    } catch (error) {
+      console.error("Backend Auth Error:", error);
+      alert("登入失敗，請檢查後端連線或 Google 配置");
+    } finally {
+      setLoading(false);
+    }
+  },
+  onError: () => console.log('Google Login Failed'),
+});
 
   
 

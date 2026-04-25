@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import axios from 'axios';
+import api from '../../../../lib/api';
 import { 
   Receipt, Plus, ArrowLeft, Loader2, 
   AlertCircle, DollarSign, ChevronRight
@@ -36,14 +36,13 @@ function PurchaseInvoiceContent() {
     }
   }, [targetPoId]);
 
+ // 1. 抓取採購單詳情與發票列表
   const fetchInvoices = async () => {
     if (!targetPoId) return;
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const res = await axios.get(`http://localhost:5000/api/purchaseOrder/${targetPoId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      // 🚀 簡化為 api.get，網址使用樣板字串
+      const res = await api.get(`/api/purchaseOrder/${targetPoId}`);
 
       setPoDetail(res.data);
       setInvoices(res.data.purchaseInvoices || []);
@@ -54,22 +53,20 @@ function PurchaseInvoiceContent() {
     }
   };
 
+  // 2. 建立新的採購發票
   const handleCreateInvoice = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem('token');
-      
-      // 自動生成編號邏輯：採購單號 - (現有數量 + 1)
+      // 自動生成編號邏輯 (保持不變)
       const nextIndex = invoices.length + 1;
       const autoInvoiceNo = `${poDetail?.poNumber || 'INV'}-${nextIndex}`;
 
-      await axios.post(`http://localhost:5000/api/purchaseInvoice`, {
+      // 🚀 簡化為 api.post，移除 headers 參數
+      await api.post(`/api/purchaseInvoice`, {
         amount: Number(formData.amount),
         purchaseOrderId: targetPoId,
         invoiceNo: autoInvoiceNo,
         status: 'PENDING'
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
       });
 
       setShowAddModal(false);

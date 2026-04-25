@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 
 import { Search, Plus, Loader2, Users } from "lucide-react";
 
-import axios from "axios";
+import api from '../../lib/api';
 
 import CustomerCard from "./components/CustomerCard"; // 剛才做的子元件
 
@@ -24,11 +24,8 @@ export default function CustomersPage() {
   useEffect(() => {
     const fetchCustomers = async () => {
       try {
-        const token = localStorage.getItem("token");
-
-        const response = await axios.get("http://localhost:5000/api/customer", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        // 🚀 使用中央 api 實例，自動注入 Token
+        const response = await api.get("/api/customer");
 
         setCustomers(response.data);
       } catch (err) {

@@ -10,7 +10,7 @@ import {
   Loader2, // 👈 增加載入圖示
   FileQuestion
 } from 'lucide-react';
-import axios from 'axios';
+import api from '../lib/api';
 
 interface Project {
   id: string;
@@ -40,12 +40,11 @@ export default function DashboardPage() {
       const headers = { Authorization: `Bearer ${token}` };
 
       // 同時發送三個請求，提高效率
-      const [resCompleted, resFilled, resUnfilled] = await Promise.all([
-        axios.get('http://localhost:5000/api/projects/all?status=COMPLETED', { headers }),
-        axios.get('http://localhost:5000/api/projects/all?status=FILLED', { headers }),
-        axios.get('http://localhost:5000/api/projects/all?status=UNFILLED', { headers }),
-      ]);
-
+     const [resCompleted, resFilled, resUnfilled] = await Promise.all([
+  api.get('/api/projects/all?status=COMPLETED'),
+  api.get('/api/projects/all?status=FILLED'),
+  api.get('/api/projects/all?status=UNFILLED'),
+]);
       setProjects({
         completed: resCompleted.data,
         filled: resFilled.data,
