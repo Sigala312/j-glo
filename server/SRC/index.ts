@@ -24,7 +24,10 @@ const PORT = process.env.PORT || 5000;
 // 2. 中間件 (Middleware)
 // 允許來自 Next.js 前端 (localhost:3000) 的跨域請求
 app.use(cors({
-  origin: "http://localhost:3000",
+  origin: [
+    "http://localhost:3000",
+    "https://你的前端專案.vercel.app" // 等部署完前端後回來補上
+  ],
   credentials: true
 }));
 
@@ -57,14 +60,17 @@ app.use("/api/purchaseInvoice", purchaseInvoiceRoutes);
  app.use("/api/Invoice", IncoiceRoutes);
  app.use("/api/Remark", remarkRoutes);
 // 4. 啟動伺服器
-app.listen(PORT, () => {
-  console.log(`[server]: 🚀 Server is running at http://localhost:${PORT}`);
-  console.log(`[server]: 🔧 Mode: ${process.env.NODE_ENV || 'development'}`);
+if (process.env.NODE_ENV !== 'production') {
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, () => {
+    console.log(`[server]: 🚀 Local Server running at http://localhost:${PORT}`);
+    // 本地環境才跑 Cron
+    try {
+      initCronJobs();
+    } catch (err) {
+      console.error(err);
+    }
+  });
+}
 
-  try {
-    initCronJobs();
-    console.log(`[cron]: ⏰ Automated collection monitoring activated.`);
-  } catch (err) {
-    console.error(`[cron]: ❌ Failed to initialize cron jobs:`, err);
-  }
-});
+export default app;
