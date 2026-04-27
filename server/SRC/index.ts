@@ -26,7 +26,7 @@ const PORT = process.env.PORT || 5000;
 app.use(cors({
   origin: [
     "http://localhost:3000",
-    "https://j-glo-client.vercel.app/" // 等部署完前端後回來補上
+    "https://j-glo-client.vercel.app" 
   ],
   credentials: true
 }));
