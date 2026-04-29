@@ -51,4 +51,56 @@ export class AuthService {
     throw new Error("身分驗證失敗");
   }
 }
+
+static async verifyMicrosoftAndLogin(accessToken: string) {
+    try {
+      // 向 Microsoft Graph API 索取資料
+      const msResponse = await axios.get('https://graph.microsoft.com/v1.0/me', {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+
+      const { mail, displayName, userPrincipalName } = msResponse.data;
+      const email = mail || userPrincipalName; // 防止 mail 欄位為空
+
+      if (!email) throw new Error("無法從 Microsoft 取得 Email");
+
+      return await this.upsertUserAndSignToken({ 
+        email, 
+        name: displayName, 
+        image: null 
+      });
+    } catch (error) {
+      console.error("Microsoft Verify Error:", error);
+      throw new Error("Microsoft 身分驗證失敗");
+    }
+  }
+
+  private static async upsertUserAndSignToken(userData: { 
+    email: string, 
+    name: string, 
+    image: string | null 
+  }) {
+    // 使用 upsert：如果 Email 存在就更新（或不動作），不存在就建立
+    const user = await prisma.user.upsert({
+      where: { email: userData.email },
+      update: {
+        name: userData.name,
+        image: userData.image,
+      },
+      create: {
+        email: userData.email,
+        name: userData.name,
+        image: userData.image,
+        role: 'USER', // 預設角色
+      },
+    });
+
+    const token = jwt.sign(
+      { userId: user.id, role: user.role },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    return { token, user };
+  }
 }

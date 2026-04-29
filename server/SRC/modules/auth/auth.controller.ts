@@ -19,6 +19,26 @@ export class AuthController {
     }
   };
 
+  static async microsoftLogin(req: Request, res: Response) {
+    console.log("📥 收到 Microsoft 登入請求！Body內容:", req.body);
+    try {
+      // ⚠️ 注意：前端傳來的欄位名稱要對應 (對應你前端 api.post 傳的 accessToken)
+      const { accessToken } = req.body; 
+      
+      if (!accessToken) return res.status(400).json({ error: "缺少 Microsoft Access Token" });
+
+      const result = await AuthService.verifyMicrosoftAndLogin(accessToken);
+      
+      return res.status(200).json({
+        message: "Microsoft 登入成功",
+        ...result
+      });
+    } catch (error: any) {
+      console.error("Microsoft Login Controller Error:", error);
+      return res.status(401).json({ error: "Microsoft 認證失敗: " + error.message });
+    }
+  };
+
   static async getMe(req: Request, res: Response) {
     try {
       // 因為有 authenticateJWT，所以可以直接從 req 拿到解析後的使用者資料

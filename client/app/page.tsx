@@ -6,16 +6,69 @@ import { Cpu, ChevronLeft, ShieldCheck, UserPlus } from 'lucide-react';
 import { useGoogleLogin, GoogleOAuthProvider } from '@react-oauth/google';
 import api from './lib/api';
 import { useRouter } from 'next/navigation';
+import { PublicClientApplication } from "@azure/msal-browser";
+import { MsalProvider, useMsal } from "@azure/msal-react";
+import { msalConfig, loginRequest } from "./lib/authConfig";
 
 // --- 配置區 ---
 const GOOGLE_CLIENT_ID = "303259997714-1fbt0jvi4ri2fnjhusaiur08d0upcnr0.apps.googleusercontent.com";
 const BACKEND_ENDPOINT = "/api/auth/google-login";
+const MS_BACKEND_ENDPOINT = "/api/auth/microsoft-login";
+
+const msalInstance = new PublicClientApplication(msalConfig);
+
+let msalInitialized = false;
 
 const TechHeroContent = () => {
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [view, setView] = useState<'home' | 'login' | 'register'>('home');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+
+  const { instance } = useMsal();
+  const [isMsalReady, setIsMsalReady] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+
+ useEffect(() => {
+    const init = async () => {
+      if (!msalInitialized) {
+        try {
+          await instance.initialize();
+          msalInitialized = true;
+          setIsMsalReady(true);
+          console.log("✅ MSAL 初始化成功");
+        } catch (e) {
+          console.error("MSAL 初始化失敗:", e);
+        }
+      } else {
+        setIsMsalReady(true);
+      }
+    };
+    init();
+  }, [instance]);
+
+  // 🚀 B. 處理 Redirect 的 useEffect (加上 isMsalReady 檢查)
+  useEffect(() => {
+    if (!isMsalReady || isLoggingIn) return; // 沒準備好就不跑
+
+    const handleRedirect = async () => {
+      try {
+        const result = await instance.handleRedirectPromise();
+        if (result) {
+          setLoading(true);
+          const response = await api.post(MS_BACKEND_ENDPOINT, {
+            accessToken: result.accessToken,
+          });
+          handleAuthSuccess(response.data);
+        }
+      } catch (error) {
+        console.error("Redirect處理出錯:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    handleRedirect();
+  }, [instance, isMsalReady, isLoggingIn]);
   
   // 追蹤鼠標位置
   useEffect(() => {
@@ -26,6 +79,7 @@ const TechHeroContent = () => {
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
 
+  
   // --- Google 登入邏輯 ---
   const loginWithGoogle = useGoogleLogin({
   onSuccess: async (tokenResponse) => {
@@ -56,6 +110,33 @@ const TechHeroContent = () => {
   },
   onError: () => console.log('Google Login Failed'),
 });
+
+const loginWithMicrosoft = async () => {
+    if (!isMsalReady) {
+      alert("系統正在初始化中，請稍候再試");
+      return;
+    }
+    try {
+      setIsLoggingIn(true);
+      // 這次我們用 Redirect，它最穩定
+      await instance.loginRedirect(loginRequest);
+    } catch (error) {
+      console.error("Login Redirect Error:", error);
+    }
+  };
+
+  const handleAuthSuccess = (data: any) => {
+    const { token, user } = data;
+    localStorage.setItem('token', token);
+    
+    // 檢查審核狀態 (配合我們剛才討論的白名單機制)
+    if (user.status === 'PENDING') {
+      alert("帳號審核中，請聯繫管理員");
+      return;
+    }
+
+    router.push(user.role === 'ADMIN' ? '/ADMIN' : '/Dashboard');
+  };
 
   
 
@@ -183,6 +264,16 @@ const TechHeroContent = () => {
                 <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="w-3 h-3 grayscale opacity-70" alt="Google" />
                 {loading ? 'Verifying...' : 'Continue via Google'}
               </motion.button>
+
+              <motion.button 
+                onClick={() => loginWithMicrosoft()} 
+                disabled={loading}
+                whileHover={{ borderColor: "#475569", backgroundColor: "rgba(255,255,255,0.03)" }}
+                className="flex items-center justify-center gap-3 w-full py-3 border border-slate-800 text-[9px] uppercase tracking-[0.2em] transition-all text-slate-300 disabled:opacity-50"
+              >
+                <img src="https://www.svgrepo.com/show/354068/microsoft-icon.svg" className="w-3 h-3 grayscale opacity-70" alt="Microsoft" />
+                {loading ? 'Verifying...' : 'Continue via Microsoft'}
+              </motion.button>
             </div>
 
             {/* 導覽 */}
@@ -219,8 +310,10 @@ const TechHeroContent = () => {
 // 最終導出的組件：包裹 Provider
 export default function TechHeroPage() {
   return (
-    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
-      <TechHeroContent />
-    </GoogleOAuthProvider>
+    <MsalProvider instance={msalInstance}>
+      <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+        <TechHeroContent />
+      </GoogleOAuthProvider>
+    </MsalProvider>
   );
 }

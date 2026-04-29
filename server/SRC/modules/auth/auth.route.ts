@@ -6,8 +6,11 @@ import { LoginSchema } from "./auth.schema.js";
 
 const router: Router = Router();
 
+console.log("Microsoft Method:", AuthController.microsoftLogin); // 🚀 檢查這行！
 // 登入接口
 router.post("/google-login", validate(LoginSchema), AuthController.googleLogin);
+
+router.post("/microsoft-login", AuthController.microsoftLogin);
 
 // 獲取當前資訊 (需要驗證 JWT)
 router.get("/me", authenticateJWT, AuthController.getMe);
