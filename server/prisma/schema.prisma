@@ -11,13 +11,22 @@ datasource db {
 model User {
   id            String    @id @default(cuid())
   name          String?
+  password      String?
   email         String?   @unique
   emailVerified DateTime?
   image         String?
 
+  // 部門關聯 (一對多)
+  departmentId String? // 第 1 步選擇的部門 ID
+  department   Department? @relation(fields: [departmentId], references: [id])
+
+  // 登入方式 (第 2 步判斷)
+  provider AuthProvider @default(LOCAL) // LOCAL, GOOGLE, MICROSOFT
+
   googleId String? @unique
   // 權限角色：預設為一般員工 (USER)
   role     Role    @default(USER)
+  status   Status  @default(PENDING) // 預設待審核
 
   // 關聯到第三方登入的帳戶 (NextAuth 必備)
   accounts Account[]
@@ -30,10 +39,29 @@ model User {
   updatedAt DateTime @updatedAt
 }
 
+model Department {
+  id        String   @id @default(uuid())
+  name      String   @unique // 例如：開發部、業務部、人事部
+  users     User[] // 關聯到該部門的所有員工
+  createdAt DateTime @default(now())
+}
+
 // 角色列舉
 enum Role {
   ADMIN // 管理員：可看專案金額、刪除專案
   USER // 一般員工：僅能查看或編輯部分內容
+}
+
+enum Status {
+  ACTIVE // 已通過
+  PENDING // 待審核
+  SUSPENDED // 停權
+}
+
+enum AuthProvider {
+  LOCAL // 訪客 (帳密)
+  GOOGLE // Gmail
+  MICROSOFT // Microsoft
 }
 
 model Client {

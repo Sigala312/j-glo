@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
-import { Role } from "@prisma/client";
+import { Role , Status} from "@prisma/client";
 
 const JWT_SECRET = (process.env.JWT_SECRET || "MAX&CHLOE") as string;
 
@@ -18,7 +18,18 @@ export const authenticateJWT = (req: Request, res: Response, next: NextFunction)
       }
       
       // 這裡現在會有型別提示了，不再需要 as any
-      req.user = decoded as { id: string; email: string; role: Role }; 
+const payload = decoded as { 
+        id: string; 
+        email: string; 
+        role: Role; 
+        status: Status 
+      };
+        req.user = {
+        id: payload.id,
+        email: payload.email,
+        role: payload.role,
+        status: payload.status
+      };
       next();
     });
   } else {

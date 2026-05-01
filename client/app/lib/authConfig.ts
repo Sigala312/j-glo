@@ -18,4 +18,5 @@ export const msalConfig = {
 // 要求的權限範例
 export const loginRequest = {
   scopes: ["User.Read"],
+  prompt: "select_account",
 };

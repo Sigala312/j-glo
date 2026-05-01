@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
+import { useMsal } from "@azure/msal-react";
 import { motion } from 'framer-motion';
 import { 
   LayoutDashboard, 
@@ -24,6 +25,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const [isAuth, setIsAuth] = useState(false);
 
+  const { instance } = useMsal();
+
   // 1. 權限檢查 (守門員)
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -34,9 +37,25 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [router]);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    // 1. 清除本地認證
     localStorage.removeItem('token');
-    router.push('/');
+
+    // 2. 判斷是否有微軟帳戶登入，並執行微軟登出
+    // 這會導向微軟的登出頁面，確保 Session 被清除，解決「閃現自動登入」問題
+    try {
+      const accounts = instance.getAllAccounts();
+      if (accounts.length > 0) {
+        await instance.logoutRedirect({
+          postLogoutRedirectUri: "/", // 登出後跳回首頁
+        });
+      } else {
+        router.push('/');
+      }
+    } catch (e) {
+      console.error("Logout Error:", e);
+      router.push('/');
+    }
   };
 
   if (!isAuth) return <div className="min-h-screen bg-[#0a0a0a]" />; // 檢查中回傳空白背景

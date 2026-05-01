@@ -7,6 +7,7 @@ import { initCronJobs } from './modules/Invoice/cron.js';
 
 import authRoutes from "./modules/auth/auth.route.js";
 import attachmentRoutes from './modules/Attachment/attachment.routes.js'; // 確保路徑正確
+import departmentRoutes from "./modules/Department/department.route.js";
 import customerRoutes from "./modules/customer/customer.route.js";
 import orderRoutes from "./modules/order/order.routes.js";
 import IncoiceRoutes from "./modules/Invoice/Invoice.route.js";
@@ -50,6 +51,7 @@ app.get("/", (req: Request, res: Response) => {
 // 認證相關 (Google Login / Me)
 app.use("/api/auth", authRoutes);
 app.use("/api/attachments", attachmentRoutes);
+app.use("/api/departments", departmentRoutes);
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 app.use("/api/customer", customerRoutes);
 app.use("/api/projects", projectRoutes);
