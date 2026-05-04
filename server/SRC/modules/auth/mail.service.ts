@@ -4,14 +4,14 @@ export class MailService {
   private static transporter = nodemailer.createTransport({
     service: "gmail",
     auth: {
-      user: process.env.MAIL_USER, // 你的 Gmail 帳號
-      pass: process.env.MAIL_PASS, // 你的 Google 應用程式密碼
+      user: process.env.EMAIL_USER, // 你的 Gmail 帳號
+      pass: process.env.EMAIL_PASS, // 你的 Google 應用程式密碼
     },
   });
 
   static async sendApprovalEmail(toEmail: string, userName: string) {
     const mailOptions = {
-      from: `"J-GLOBAL 系統中心" <${process.env.MAIL_USER}>`,
+      from: `"J-GLOBAL 系統中心" <${process.env.EMAIL_USER}>`,
       to: toEmail,
       subject: "【通知】您的帳號審核已通過 - J-GLOBAL",
       html: `
