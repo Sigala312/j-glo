@@ -4,6 +4,7 @@ import { OAuth2Client } from "google-auth-library";
 import axios from 'axios';
 import bcrypt from "bcrypt";
 import { Status } from "@prisma/client";
+import {MailService} from "./mail.service.js"
 
 const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key";
 
@@ -169,6 +170,8 @@ export class AdminService {
       data: { status: newStatus }
     });
   }
+
+  
 }
 
 // export class AuthService {

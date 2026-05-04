@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { AuthService } from "./auth.service.js";
 import { AdminService } from "./auth.service.js";
+import { MailService } from "./mail.service.js";
 
 export class AuthController {
   static async googleLogin(req: Request, res: Response) {
@@ -97,7 +98,6 @@ export class AuthController {
     }
   }
 
-  // 🚀 處理狀態更新 (Express 版：用於審核通過或停權離職)
  static async handleUpdateStatus(req: Request, res: Response) {
     try {
       const { userId, newStatus } = req.body;
@@ -107,23 +107,36 @@ export class AuthController {
         return res.status(400).json({ error: "參數不足：需提供 userId 與 newStatus" });
       }
 
-      // 2. 限制只能操作定義好的狀態，避免資料庫噴錯
+      // 2. 限制有效狀態
       const validStatuses = ['PENDING', 'ACTIVE', 'SUSPENDED'];
       if (!validStatuses.includes(newStatus)) {
         return res.status(400).json({ error: `無效的狀態值。可用選項: ${validStatuses.join(', ')}` });
       }
 
       // 3. 呼叫 Service 更新 Prisma 資料
-      const updatedUser = await AdminService.updateUserStatus(userId, newStatus);
+      // 確保 AdminService.updateUserStatus 回傳的 user 包含 email 和 name
+      const user = await AdminService.updateUserStatus(userId, newStatus);
 
-      // 4. 回傳結果
+      // 4. 📧 寄發審核通過郵件
+      // 當狀態從 PENDING 變更為 ACTIVE 時觸發
+      if (newStatus === "ACTIVE" && user.email) {
+        console.log(`📩 準備發送審核通過郵件至: ${user.email}`);
+        
+        // 背景執行寄信，不 await 以免 API 響應延遲
+        MailService.sendApprovalEmail(user.email, user.name!).catch((err) => {
+          console.error("❌ 郵件發送失敗:", err);
+        });
+      }
+
+      // 5. 回傳結果
       return res.status(200).json({
-        message: `使用者 [${updatedUser.name}] 狀態已更新為 ${newStatus}`,
+        message: `使用者 [${user.name}] 狀態已更新為 ${newStatus}`,
         user: {
-          id: updatedUser.id,
-          status: updatedUser.status
+          id: user.id,
+          status: user.status
         }
       });
+
     } catch (error: any) {
       console.error("Update Status Error:", error);
       return res.status(500).json({ error: "更新失敗：" + error.message });
