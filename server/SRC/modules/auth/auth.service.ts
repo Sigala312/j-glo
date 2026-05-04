@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import { OAuth2Client } from "google-auth-library";
 import axios from 'axios';
 import bcrypt from "bcrypt";
+import { Status } from "@prisma/client";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key";
 
@@ -138,6 +139,35 @@ departmentId: userData.departmentId ?? null,
     );
 
     return { token, user };
+  }
+
+  
+}
+
+
+export class AdminService {
+  // 取得所有人員列表 (包含部門資訊)
+  static async getAllUsers() {
+    return await prisma.user.findMany({
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        status: true,
+        provider: true,
+        createdAt: true,
+        department: { select: { name: true } }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+  }
+
+  // 修改使用者狀態 (審核通過、停權、恢復)
+  static async updateUserStatus(userId: string, newStatus: Status) {
+    return await prisma.user.update({
+      where: { id: userId },
+      data: { status: newStatus }
+    });
   }
 }
 

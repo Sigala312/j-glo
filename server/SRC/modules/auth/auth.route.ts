@@ -21,4 +21,9 @@ router.post("/microsoft-login", validate(SocialAuthSchema), AuthController.micro
 // 獲取當前資訊 (需要驗證 JWT)
 router.get("/me", authenticateJWT, AuthController.getMe);
 
+router.get("/users", AuthController.handleGetUsers);
+
+// 管理員審核或停權 (離職)
+router.patch("/users/status", AuthController.handleUpdateStatus);
+
 export default router;

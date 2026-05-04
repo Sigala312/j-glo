@@ -5,8 +5,8 @@ import { z } from "zod";
 export const SocialAuthSchema = z.object({
   body: z.object({
     accessToken: z.string().min(1, "缺少 Access Token"),
-    name: z.string().min(1, "請輸入姓名"), // 改為必填
-    departmentId: z.string().min(1, "請選擇部門"), // 新增且必填
+    // name: z.string().min(1, "請輸入姓名"),
+    // departmentId: z.string().min(1, "請選擇部門"), 
   }),
 });
 

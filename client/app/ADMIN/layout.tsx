@@ -8,6 +8,7 @@ import {
   LayoutDashboard, 
   Receipt, 
   HardHat, 
+  Users,
   ChevronRight ,
   LogOut
 } from 'lucide-react';
@@ -20,6 +21,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { icon: LayoutDashboard, label: "儀表板", href: "/ADMIN" },
     { icon: Receipt, label: "訂單", href: "/ADMIN/Order" },
     { icon: HardHat, label: "工程", href: "/Dashboard/Projects" },
+    { icon: Users, label: "人事管理", href: "/ADMIN/HR" },
   ];
 
   const handleLogout = () => {

@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { AuthService } from "./auth.service.js";
+import { AdminService } from "./auth.service.js";
 
 export class AuthController {
   static async googleLogin(req: Request, res: Response) {
@@ -82,6 +83,50 @@ export class AuthController {
       });
     } catch (error) {
       return res.status(500).json({ error: "伺服器內部錯誤" });
+    }
+  }
+
+  static async handleGetUsers(req: Request, res: Response) {
+    try {
+      // 通常這裡建議檢查 req.user.role 是否為 ADMIN
+      const users = await AdminService.getAllUsers();
+      return res.status(200).json(users);
+    } catch (error: any) {
+      console.error("Fetch Users Error:", error);
+      return res.status(500).json({ error: "無法取得使用者清單" });
+    }
+  }
+
+  // 🚀 處理狀態更新 (Express 版：用於審核通過或停權離職)
+ static async handleUpdateStatus(req: Request, res: Response) {
+    try {
+      const { userId, newStatus } = req.body;
+
+      // 1. 基本驗證
+      if (!userId || !newStatus) {
+        return res.status(400).json({ error: "參數不足：需提供 userId 與 newStatus" });
+      }
+
+      // 2. 限制只能操作定義好的狀態，避免資料庫噴錯
+      const validStatuses = ['PENDING', 'ACTIVE', 'SUSPENDED'];
+      if (!validStatuses.includes(newStatus)) {
+        return res.status(400).json({ error: `無效的狀態值。可用選項: ${validStatuses.join(', ')}` });
+      }
+
+      // 3. 呼叫 Service 更新 Prisma 資料
+      const updatedUser = await AdminService.updateUserStatus(userId, newStatus);
+
+      // 4. 回傳結果
+      return res.status(200).json({
+        message: `使用者 [${updatedUser.name}] 狀態已更新為 ${newStatus}`,
+        user: {
+          id: updatedUser.id,
+          status: updatedUser.status
+        }
+      });
+    } catch (error: any) {
+      console.error("Update Status Error:", error);
+      return res.status(500).json({ error: "更新失敗：" + error.message });
     }
   }
 }
