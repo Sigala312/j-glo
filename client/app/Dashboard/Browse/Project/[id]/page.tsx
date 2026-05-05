@@ -212,23 +212,30 @@ const [remarkContent, setRemarkContent] = useState("");
               </div>
 
               {/* 📂 顯示已上傳檔案 */}
-             {po.attachments && po.attachments.length > 0 && (
-   <div className="mt-3 pt-2 border-t border-slate-800/50 flex flex-wrap gap-2">
-     {po.attachments.map(file => (
-       <a 
-         key={file.id}
-         /* 🚀 這裡改用環境變數，若沒設定則預設 localhost */
-         href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${file.fileUrl}`}
-         target="_blank"
-         rel="noopener noreferrer" /* 安全性建議加上這行 */
-         className="flex items-center gap-1.5 bg-black/40 border border-slate-800 px-2 py-1 rounded-sm text-[10px] text-slate-400 hover:text-blue-400 hover:border-blue-500/50 transition-all"
-       >
-         {file.fileType === 'EXCEL' ? <FileSpreadsheet size={12} className="text-emerald-500" /> : <Paperclip size={12} />}
-         {file.fileName}
-       </a>
-     ))}
-   </div>
- )}
+            {po.attachments && po.attachments.length > 0 && (
+  <div className="mt-3 pt-2 border-t border-slate-800/50 flex flex-wrap gap-2">
+    {po.attachments.map(file => {
+      // 🚀 關鍵修復邏輯：檢查是否已經是完整網址
+      const isExternal = file.fileUrl.startsWith('http');
+      const finalUrl = isExternal 
+        ? file.fileUrl 
+        : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${file.fileUrl.startsWith('/') ? '' : '/'}${file.fileUrl}`;
+
+      return (
+        <a 
+          key={file.id}
+          href={finalUrl} // 使用處理過的網址
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1.5 bg-black/40 border border-slate-800 px-2 py-1 rounded-sm text-[10px] text-slate-400 hover:text-blue-400 hover:border-blue-500/50 transition-all"
+        >
+          {file.fileType === 'EXCEL' ? <FileSpreadsheet size={12} className="text-emerald-500" /> : <Paperclip size={12} />}
+          {file.fileName}
+        </a>
+      );
+    })}
+  </div>
+)}
             </div>
           ))
         ) : (
