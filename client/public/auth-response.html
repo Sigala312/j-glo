@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Authenticating...</title>
+    <!-- 引入微軟官方的 MSAL 函式庫，讓這個頁面能看懂網址裡的 code -->
+    <script src="https://alcdn.msauth.net/browser/2.35.0/js/msal-browser.min.js"></script>
+</head>
+<body>
+    <script>
+        // 1. 初始化一個簡單的實例
+        const msalConfig = {
+            auth: {
+                clientId: "cce978b1-15d7-48f3-a3b7-33a58c197db1", // 你的 Client ID
+                authority: "https://login.microsoftonline.com/common",
+            }
+        };
+
+        const msalInstance = new msal.PublicClientApplication(msalConfig);
+
+        // 2. 讓這個頁面去解析網址列的 #code=...
+        msalInstance.initialize().then(() => {
+            msalInstance.handleRedirectPromise().then((response) => {
+                // 這裡很重要：handleRedirectPromise 跑完後，
+                // MSAL 內部會自動透過視窗通訊將 Token 傳回給你的「主視窗」
+                console.log("驗證資料已傳回主視窗");
+            }).catch(err => {
+                console.error("處理回傳失敗:", err);
+            });
+        });
+    </script>
+</body>
+</html>
