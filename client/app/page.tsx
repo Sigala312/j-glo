@@ -185,7 +185,7 @@ useEffect(() => {
       // 成功後呼叫你原本就寫好的處理邏輯
       handleAuthSuccess(response.data);
       
-    } catch (error) {
+    } catch (error: any) {
       // 這裡可以針對後端回傳的錯誤進行處理
       const errMsg = error.response?.data?.message || "登入失敗，請檢查憑證";
       alert(errMsg);
