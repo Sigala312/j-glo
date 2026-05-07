@@ -45,49 +45,42 @@ const TechHeroContent = () => {
 useEffect(() => {
   const initAndHandleRedirect = async () => {
     try {
-      // 1. 確保 MSAL 實例開機（初始化）
-      // 如果沒跑這一行，handleRedirectPromise 永遠不會有結果
       await instance.initialize();
       setIsMsalReady(true); 
-      console.log("✅ MSAL 初始化完成");
 
-      // 2. 檢查網址是否有微軟回傳的資料
-      console.log("⏳ 正在執行 handleRedirectPromise...");
       const result = await instance.handleRedirectPromise();
 
       if (result) {
-        console.log("✅ 成功從微軟跳轉回來，抓到 Token:", result.accessToken);
-        setLoading(true);
+        setLoading(true); // 立即鎖定畫面
+        console.log("✅ 成功從微軟跳轉回來");
 
-        // 3. 呼叫後端 API
-        // 注意：如果是從微軟跳轉回來，這裡的 formData 可能已經被頁面刷新清空了
-        // 如果後端沒反應，可能需要檢查 formData 是否還有值
+        // 從 LocalStorage 抓回剛剛暫存的註冊資料
+        const savedData = localStorage.getItem("msal_reg_data");
+        const parsedData = savedData ? JSON.parse(savedData) : null;
+        
+        // 清除暫存以免干擾下次登入
+        localStorage.removeItem("msal_reg_data");
+
         const response = await api.post("/api/auth/microsoft-login", {
           accessToken: result.accessToken,
-          name: view === "register" ? formData.name : undefined,
-          departmentId: view === "register" ? formData.departmentId : undefined,
+          // 如果暫存有資料就用暫存的，否則用目前的 State
+          name: parsedData?.name || formData.name || undefined,
+          departmentId: parsedData?.departmentId || formData.departmentId || undefined,
         });
 
-        console.log("🚀 後端 API 回傳成功:", response.data);
         handleAuthSuccess(response.data);
-      } else {
-        console.log("ℹ️ 目前網址沒有回傳資料 (正常載入狀態)");
       }
     } catch (error: any) {
-      // 避免重複初始化導致的報錯
-      if (error.errorMessage?.includes("already initialized")) {
-        setIsMsalReady(true);
-      } else {
-        console.error("❌ MSAL 流程出錯:", error);
-      }
+      console.error("❌ MSAL 流程出錯:", error);
+      alert("微軟登入失敗，請重新嘗試");
     } finally {
-      setLoading(false);
+      // 只有在出錯時才關閉 Loading，成功的話會直接導頁，不需要關閉
+      setLoading(false); 
     }
   };
 
   initAndHandleRedirect();
-  // 依賴項加入 instance 以確保實例存在時執行
-}, [instance, view]);
+}, [instance]); 
 
 
 
@@ -194,25 +187,26 @@ useEffect(() => {
     }
   };
 
-  const loginWithMicrosoft = async () => {
+ const loginWithMicrosoft = async () => {
   console.log("--- 偵測到點擊事件 (Redirect 模式) ---");
   
+  // 防呆：如果是註冊流程，先把資料存進 LocalStorage，因為跳轉會刷新頁面
+  if (view === "register") {
+    localStorage.setItem("msal_reg_data", JSON.stringify({
+      name: formData.name,
+      departmentId: formData.departmentId,
+      view: "register"
+    }));
+  }
+
   try {
     const loginRequest = {
       scopes: ["User.Read", "openid", "profile"],
       prompt: "select_account",
     };
-
-    console.log("🚀 準備執行 loginRedirect...");
     await instance.loginRedirect(loginRequest);
-    
   } catch (error: any) {
-    // 這裡非常重要！如果 MSAL 拒絕跳轉，原因會在這裡
-    console.error("❌ MSAL 跳轉失敗，原因：", error);
-    if (error.name === "InteractionInProgressError") {
-      alert("偵測到另一個登入程序正在進行，請重新整理頁面再試。");
-      // 這就是為什麼要清 Local Storage 的原因，因為這個錯誤通常要清掉快取才能解
-    }
+    console.error("❌ MSAL 跳轉失敗：", error);
   }
 };
 
@@ -620,6 +614,35 @@ useEffect(() => {
             )}
           </motion.div>
         )}
+
+        {loading && (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-md flex flex-col items-center justify-center"
+    >
+      <div className="relative">
+        {/* 外圈旋轉動畫 */}
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+          className="w-20 h-20 border-2 border-blue-500/20 border-t-blue-500 rounded-full"
+        />
+        <Cpu className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-blue-500 animate-pulse" size={32} />
+      </div>
+      <motion.p
+        animate={{ opacity: [0.4, 1, 0.4] }}
+        transition={{ duration: 1.5, repeat: Infinity }}
+        className="mt-6 text-[10px] tracking-[0.5em] text-blue-500 font-bold uppercase"
+      >
+        Syncing_with_Mainframe...
+      </motion.p>
+      <p className="mt-2 text-[8px] text-slate-500 uppercase tracking-widest">
+        Please do not refresh the terminal
+      </p>
+    </motion.div>
+  )}
       </AnimatePresence>
 
       {/* 掃描線 */}
