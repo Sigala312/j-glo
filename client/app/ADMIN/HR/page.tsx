@@ -3,7 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { UserCheck, UserX, ShieldAlert, Loader2, Mail, Building2 } from 'lucide-react';
-import axios from 'axios';
+// 1. 改成引用你專案內的 api 配置
+import api from "../../lib/api"; 
 
 interface User {
   id: string;
@@ -19,13 +20,18 @@ export default function HRManagementPage() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  // 1. 取得所有人員名單
+  // 2. 使用 api.get 代替 axios.get
+  // 路徑改為相對路徑，api 實例會自動補上 baseURL
   const fetchUsers = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/auth/users'); // 換成你的 Express API 位址
+      const res = await api.get('/api/auth/users'); 
       setUsers(res.data);
-    } catch (error) {
+    } catch (error: any) {
       console.error("無法讀取用戶名單", error);
+      // 如果是 403 可能代表你不是管理員
+      if (error.response?.status === 403) {
+        alert("權限不足：您不具備存取人事資料庫的權限");
+      }
     } finally {
       setLoading(false);
     }
@@ -33,22 +39,23 @@ export default function HRManagementPage() {
 
   useEffect(() => { fetchUsers(); }, []);
 
-  // 2. 處理狀態更新 (核准或停權)
+  // 3. 使用 api.patch 代替 axios.patch
   const handleStatusUpdate = async (userId: string, newStatus: string) => {
     setActionLoading(userId);
     try {
-      await axios.patch('http://localhost:5000/api/auth/users/status', {
+      await api.patch('/api/auth/users/status', {
         userId,
         newStatus
       });
       // 更新成功後重新抓取資料
       await fetchUsers();
-    } catch (error) {
-      alert("更新失敗，請檢查權限或後端連線");
+    } catch (error: any) {
+      const errMsg = error.response?.data?.message || "更新失敗，請檢查權限或後端連線";
+      alert(errMsg);
     } finally {
       setActionLoading(null);
     }
-  };
+  }
 
   if (loading) return (
     <div className="h-full flex items-center justify-center">
