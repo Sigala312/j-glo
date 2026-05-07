@@ -190,7 +190,31 @@ useEffect(() => {
  const loginWithMicrosoft = async () => {
   console.log("--- 偵測到點擊事件 (Redirect 模式) ---");
   
-  // 防呆：如果是註冊流程，先把資料存進 LocalStorage，因為跳轉會刷新頁面
+  // 1. 【自動解鎖防護】每次點擊時，主動清除所有可能殘留的 MSAL 衝突標記
+  // 同時清除 localStorage 與 sessionStorage，確保微軟的 state 乾乾淨淨
+  try {
+    const keysToRemove = ["msal.", "login.", "msid"];
+    
+    // 清除 LocalStorage
+    Object.keys(localStorage).forEach((key) => {
+      if (keysToRemove.some(prefix => key.includes(prefix))) {
+        localStorage.removeItem(key);
+      }
+    });
+
+    // 清除 SessionStorage
+    Object.keys(sessionStorage).forEach((key) => {
+      if (keysToRemove.some(prefix => key.includes(prefix))) {
+        sessionStorage.removeItem(key);
+      }
+    });
+
+    console.log("🧹 系統已自動重設並清除微軟快取，防止重複點擊鎖死。");
+  } catch (cleanError) {
+    console.warn("自動清理快取失敗（不影響主要流程）：", cleanError);
+  }
+
+  // 2. 防呆：如果是註冊流程，先把資料存進 LocalStorage，因為跳轉會刷新頁面
   if (view === "register") {
     localStorage.setItem("msal_reg_data", JSON.stringify({
       name: formData.name,
@@ -199,14 +223,32 @@ useEffect(() => {
     }));
   }
 
+  // 3. 執行微軟 Redirect 登入
   try {
     const loginRequest = {
       scopes: ["User.Read", "openid", "profile"],
       prompt: "select_account",
     };
+    
     await instance.loginRedirect(loginRequest);
+    
   } catch (error: any) {
     console.error("❌ MSAL 跳轉失敗：", error);
+
+    // 4. 【雙重保險】如果真的不幸在執行時又噴了鎖死錯誤 (InteractionInProgressError)
+    if (
+      error.name === "InteractionInProgressError" || 
+      error.errorMessage?.includes("interaction_in_progress")
+    ) {
+      alert("偵測到登入連線衝突，系統已自動重設！請在頁面重新整理後再點擊一次即可。");
+      
+      // 強制清空所有快取並重新整理
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.reload();
+    } else {
+      alert(`登入跳轉失敗：${error.message || "請檢查您的網路連線"}`);
+    }
   }
 };
 
