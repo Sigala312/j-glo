@@ -2,95 +2,64 @@
 
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Cpu,
-  ChevronLeft,
-  ShieldCheck,
-  UserPlus,
-  CheckCircle2,
-} from "lucide-react";
+import { Cpu } from "lucide-react";
 import { useGoogleLogin, GoogleOAuthProvider } from "@react-oauth/google";
 import api from "./lib/api";
 import { useRouter } from "next/navigation";
 import { PublicClientApplication } from "@azure/msal-browser";
 import { MsalProvider, useMsal } from "@azure/msal-react";
-import { msalConfig, loginRequest } from "./lib/authConfig";
+import { msalConfig } from "./lib/authConfig";
 
-// --- 配置區 ---
-const GOOGLE_CLIENT_ID =
-  "303259997714-1fbt0jvi4ri2fnjhusaiur08d0upcnr0.apps.googleusercontent.com";
+// 💡 匯入通用響應式模板與拆開的視圖
+import ResponsiveContainer from "./component/ResponsiveContainer";
+import AuthDesktop from "./component/AuthDesktop";
+import AuthMobile from "./component/AuthMobile";
+
+const GOOGLE_CLIENT_ID = "303259997714-1fbt0jvi4ri2fnjhusaiur08d0upcnr0.apps.googleusercontent.com";
 const msalInstance = new PublicClientApplication(msalConfig);
-let msalInitialized = false;
 
 const TechHeroContent = () => {
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [view, setView] = useState<"home" | "login" | "register">("home");
-  const [regStep, setRegStep] = useState(1); // 1:身分, 2:通訊協議, 3:內部密鑰, 4:審核中
+  const [regStep, setRegStep] = useState(1);
   const [loading, setLoading] = useState(false);
-  const [departments, setDepartments] = useState<
-    { id: string; name: string }[]
-  >([]);
-  const [formData, setFormData] = useState({
-    name: "",
-    departmentId: "",
-    email: "",
-    password: "",
-  });
+  const [departments, setDepartments] = useState<{ id: string; name: string }[]>([]);
+  const [formData, setFormData] = useState({ name: "", departmentId: "", email: "", password: "" });
 
   const router = useRouter();
   const { instance } = useMsal();
-  const [isMsalReady, setIsMsalReady] = useState(false);
 
- // 修改初始化邏輯
-useEffect(() => {
-  const initAndHandleRedirect = async () => {
-    try {
-      await instance.initialize();
-      setIsMsalReady(true); 
-
-      const result = await instance.handleRedirectPromise();
-
-      if (result) {
-        setLoading(true); // 立即鎖定畫面
-        console.log("✅ 成功從微軟跳轉回來");
-
-        // 從 LocalStorage 抓回剛剛暫存的註冊資料
-        const savedData = localStorage.getItem("msal_reg_data");
-        const parsedData = savedData ? JSON.parse(savedData) : null;
-        
-        // 清除暫存以免干擾下次登入
-        localStorage.removeItem("msal_reg_data");
-
-        const response = await api.post("/api/auth/microsoft-login", {
-          accessToken: result.accessToken,
-          // 如果暫存有資料就用暫存的，否則用目前的 State
-          name: parsedData?.name || formData.name || undefined,
-          departmentId: parsedData?.departmentId || formData.departmentId || undefined,
-        });
-
-        handleAuthSuccess(response.data);
+  // 微軟登入跳轉處理邏輯 (不變)
+  useEffect(() => {
+    const initAndHandleRedirect = async () => {
+      try {
+        await instance.initialize();
+        const result = await instance.handleRedirectPromise();
+        if (result) {
+          setLoading(true);
+          const savedData = localStorage.getItem("msal_reg_data");
+          const parsedData = savedData ? JSON.parse(savedData) : null;
+          localStorage.removeItem("msal_reg_data");
+          const response = await api.post("/api/auth/microsoft-login", {
+            accessToken: result.accessToken,
+            name: parsedData?.name || formData.name || undefined,
+            departmentId: parsedData?.departmentId || formData.departmentId || undefined,
+          });
+          handleAuthSuccess(response.data);
+        }
+      } catch (error: any) {
+        console.error("❌ MSAL 流程出錯:", error);
+        alert("微軟登入失敗，請重新嘗試");
+      } finally {
+        setLoading(false); 
       }
-    } catch (error: any) {
-      console.error("❌ MSAL 流程出錯:", error);
-      alert("微軟登入失敗，請重新嘗試");
-    } finally {
-      // 只有在出錯時才關閉 Loading，成功的話會直接導頁，不需要關閉
-      setLoading(false); 
-    }
-  };
+    };
+    initAndHandleRedirect();
+  }, [instance]); 
 
-  initAndHandleRedirect();
-}, [instance]); 
-
-
-
-  // 抓取部門
+  // 抓取部門資料
   useEffect(() => {
     if (view === "register" && departments.length === 0) {
-      api
-        .get("/api/departments")
-        .then((res) => setDepartments(res.data))
-        .catch(() => {});
+      api.get("/api/departments").then((res) => setDepartments(res.data)).catch(() => {});
     }
   }, [view]);
 
@@ -107,608 +76,136 @@ useEffect(() => {
 
   const loginWithGoogle = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
-      // 如果是在註冊流程的第一步沒過就跑來這，擋掉
       if (view === "register" && (!formData.name || !formData.departmentId)) {
         alert("請先完成第一步：填寫姓名與部門");
         setRegStep(1);
         return;
       }
-
       setLoading(true);
       try {
         const response = await api.post("/api/auth/google-login", {
           accessToken: tokenResponse.access_token,
-          // 只有在註冊視圖時才傳送這些，登入時傳空字串或 null
           name: view === "register" ? formData.name : undefined,
           departmentId: view === "register" ? formData.departmentId : undefined,
         });
         handleAuthSuccess(response.data);
       } catch (error: any) {
-        // 這裡可以捕捉後端報錯並提示
-        const errMsg = error.response?.data?.message || "驗證失敗";
-        alert(errMsg);
-      } finally {
-        setLoading(false);
-      }
+        alert(error.response?.data?.message || "驗證失敗");
+      } 
+finally { setLoading(false); }
     },
   });
 
   const handleFinalRegistration = async () => {
-    // 簡單的前端驗證
-    if (!formData.email || !formData.password) {
-      alert("請填寫完整的信箱與密碼");
-      return;
-    }
-
+    if (!formData.email || !formData.password) { alert("請填寫完整的信箱與密碼"); return; }
     setLoading(true);
     try {
       const response = await api.post("/api/auth/register", {
-        name: formData.name,
-        email: formData.email,
-        password: formData.password,
-        departmentId: formData.departmentId,
+        name: formData.name, email: formData.email, password: formData.password, departmentId: formData.departmentId,
       });
-
-      // 註冊成功後，根據後端回傳判斷
-      // 通常新註冊用戶狀態為 PENDING，所以跳到 Step 4 (審核中)
       handleAuthSuccess(response.data);
     } catch (error: any) {
-      const errMsg = error.response?.data?.message || "註冊程序失敗";
-      alert(errMsg);
-    } finally {
-      setLoading(false);
-    }
+      alert(error.response?.data?.message || "註冊程序失敗");
+    } finally { setLoading(false); }
   };
 
   const handleLogin = async () => {
-    // 簡單檢查
-    if (!formData.email || !formData.password) {
-      alert("請輸入帳號與密碼");
-      return;
+    if (!formData.email || !formData.password) { alert("請輸入帳號與密碼"); return; }
+    setLoading(true);
+    try {
+      const response = await api.post("/api/auth/login", { email: formData.email, password: formData.password });
+      handleAuthSuccess(response.data);
+    } catch (error: any) {
+      alert(error.response?.data?.message || "登入失敗，請檢查憑證");
+    } finally { setLoading(false); }
+  };
+
+  const loginWithMicrosoft = async () => {
+    try {
+      const keysToRemove = ["msal.", "login.", "msid"];
+      Object.keys(localStorage).forEach((key) => { if (keysToRemove.some(prefix => key.includes(prefix))) localStorage.removeItem(key); });
+      Object.keys(sessionStorage).forEach((key) => { if (keysToRemove.some(prefix => key.includes(prefix))) sessionStorage.removeItem(key); });
+    } catch (e) {}
+
+    if (view === "register") {
+      localStorage.setItem("msal_reg_data", JSON.stringify({ name: formData.name, departmentId: formData.departmentId, view: "register" }));
     }
 
-    setLoading(true); // 觸發讀取狀態
     try {
-      // 串接登入 API
-      const response = await api.post("/api/auth/login", {
-        email: formData.email,
-        password: formData.password
-      });
-
-      // 成功後呼叫你原本就寫好的處理邏輯
-      handleAuthSuccess(response.data);
-      
+      await instance.loginRedirect({ scopes: ["User.Read", "openid", "profile"], prompt: "select_account" });
     } catch (error: any) {
-      // 這裡可以針對後端回傳的錯誤進行處理
-      const errMsg = error.response?.data?.message || "登入失敗，請檢查憑證";
-      alert(errMsg);
-    } finally {
-      setLoading(false);
+      if (error.name === "InteractionInProgressError" || error.errorMessage?.includes("interaction_in_progress")) {
+        alert("偵測到登入連線衝突，系統已自動重設！請重新點擊。");
+        localStorage.clear(); sessionStorage.clear(); window.location.reload();
+      } else {
+        alert(`跳轉失敗：${error.message}`);
+      }
     }
   };
 
- const loginWithMicrosoft = async () => {
-  console.log("--- 偵測到點擊事件 (Redirect 模式) ---");
-  
-  // 1. 【自動解鎖防護】每次點擊時，主動清除所有可能殘留的 MSAL 衝突標記
-  // 同時清除 localStorage 與 sessionStorage，確保微軟的 state 乾乾淨淨
-  try {
-    const keysToRemove = ["msal.", "login.", "msid"];
-    
-    // 清除 LocalStorage
-    Object.keys(localStorage).forEach((key) => {
-      if (keysToRemove.some(prefix => key.includes(prefix))) {
-        localStorage.removeItem(key);
-      }
-    });
-
-    // 清除 SessionStorage
-    Object.keys(sessionStorage).forEach((key) => {
-      if (keysToRemove.some(prefix => key.includes(prefix))) {
-        sessionStorage.removeItem(key);
-      }
-    });
-
-    console.log("🧹 系統已自動重設並清除微軟快取，防止重複點擊鎖死。");
-  } catch (cleanError) {
-    console.warn("自動清理快取失敗（不影響主要流程）：", cleanError);
-  }
-
-  // 2. 防呆：如果是註冊流程，先把資料存進 LocalStorage，因為跳轉會刷新頁面
-  if (view === "register") {
-    localStorage.setItem("msal_reg_data", JSON.stringify({
-      name: formData.name,
-      departmentId: formData.departmentId,
-      view: "register"
-    }));
-  }
-
-  // 3. 執行微軟 Redirect 登入
-  try {
-    const loginRequest = {
-      scopes: ["User.Read", "openid", "profile"],
-      prompt: "select_account",
-    };
-    
-    await instance.loginRedirect(loginRequest);
-    
-  } catch (error: any) {
-    console.error("❌ MSAL 跳轉失敗：", error);
-
-    // 4. 【雙重保險】如果真的不幸在執行時又噴了鎖死錯誤 (InteractionInProgressError)
-    if (
-      error.name === "InteractionInProgressError" || 
-      error.errorMessage?.includes("interaction_in_progress")
-    ) {
-      alert("偵測到登入連線衝突，系統已自動重設！請在頁面重新整理後再點擊一次即可。");
-      
-      // 強制清空所有快取並重新整理
-      localStorage.clear();
-      sessionStorage.clear();
-      window.location.reload();
-    } else {
-      alert(`登入跳轉失敗：${error.message || "請檢查您的網路連線"}`);
-    }
-  }
-};
-
-  // 進度條組件
+  // 進度條小組件
   const ProgressBar = () => (
-    <div className="mb-8">
+    <div className="mb-6">
       <div className="flex justify-between text-[8px] tracking-[0.2em] text-slate-600 mb-2 uppercase">
-        <span className={regStep >= 1 ? "text-blue-500" : ""}>01_Identity</span>
-        <span className={regStep >= 2 ? "text-blue-500" : ""}>02_Protocol</span>
-        <span className={regStep >= 3 ? "text-blue-500" : ""}>03_Security</span>
+        <span className={regStep >= 1 ? "text-blue-500" : ""}>01_Id</span>
+        <span className={regStep >= 2 ? "text-blue-500" : ""}>02_Proto</span>
+        <span className={regStep >= 3 ? "text-blue-500" : ""}>03_Sec</span>
       </div>
       <div className="h-[2px] w-full bg-slate-900 flex gap-1">
         {[1, 2, 3].map((s) => (
-          <div
-            key={s}
-            className={`h-full transition-all duration-500 ${regStep >= s ? "bg-blue-600 w-1/3 shadow-[0_0_8px_rgba(37,99,235,0.6)]" : "bg-slate-900 w-1/3"}`}
-          />
+          <div key={s} className={`h-full transition-all duration-500 ${regStep >= s ? "bg-blue-600 w-1/3 shadow-[0_0_8px_rgba(37,99,235,0.6)]" : "bg-slate-900 w-1/3"}`} />
         ))}
       </div>
     </div>
   );
 
+  // 打包要傳遞給子組件的 Props 包裹
+  const commonProps = {
+    view, setView, regStep, setRegStep, formData, setFormData, departments, loading,
+    handleLogin, handleFinalRegistration, loginWithGoogle, loginWithMicrosoft, ProgressBar
+  };
+
   return (
-    <div className="relative min-h-screen w-full bg-[#0a0a0a] overflow-hidden flex flex-col items-center justify-center font-mono text-slate-400">
-      {/* 背景裝飾 */}
-      <div
-        className="absolute inset-0 opacity-20"
-        style={{
-          backgroundImage: `linear-gradient(#1e293b 1px, transparent 1px), linear-gradient(90deg, #1e293b 1px, transparent 1px)`,
-          backgroundSize: "40px 40px",
-        }}
-      />
+    <div className="relative min-h-screen w-full bg-[#0a0a0a] overflow-hidden flex flex-col items-center justify-center font-mono text-slate-400 p-4">
+      {/* 背景裝飾網格與掃描線 */}
+      <div className="absolute inset-0 opacity-20" style={{ backgroundImage: `linear-gradient(#1e293b 1px, transparent 1px), linear-gradient(90deg, #1e293b 1px, transparent 1px)`, backgroundSize: "40px 40px" }} />
+      <div className="absolute bottom-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-blue-500/40 to-transparent animate-scan z-50 pointer-events-none" />
 
       <AnimatePresence mode="wait">
         {view === "home" ? (
-          <motion.div
-            key="home"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="z-10 flex flex-col items-center"
-          >
-            <h1 className="text-5xl md:text-8xl font-bold text-white tracking-tighter mb-16 relative">
+          <motion.div key="home" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} className="z-10 flex flex-col items-center w-full max-w-md">
+            <h1 className="text-5xl md:text-8xl font-bold text-white tracking-tighter mb-16">
               J-GLOBAL<span className="text-blue-600">.</span>
             </h1>
-            <div className="flex flex-col md:flex-row gap-8">
-              <motion.button
-                onClick={() => setView("login")}
-                className="px-12 py-3 border border-slate-700 text-slate-200 tracking-[0.2em] uppercase text-sm hover:bg-slate-100 hover:text-black transition-all"
-              >
-                登入
-              </motion.button>
-              <motion.button
-                onClick={() => {
-                  setView("register");
-                  setRegStep(1);
-                }}
-                className="px-12 py-3 bg-blue-600 text-white tracking-[0.2em] uppercase text-sm font-bold hover:shadow-[0_0_20px_rgba(37,99,235,0.5)] transition-all"
-              >
-                註冊
-              </motion.button>
+            <div className="flex flex-col sm:flex-row gap-6 w-full px-4">
+              <button onClick={() => setView("login")} className="flex-1 py-4 border border-slate-700 text-slate-200 tracking-[0.2em] uppercase text-sm hover:bg-slate-100 hover:text-black transition-all">登入</button>
+              <button onClick={() => { setView("register"); setRegStep(1); }} className="flex-1 py-4 bg-blue-600 text-white tracking-[0.2em] uppercase text-sm font-bold hover:shadow-[0_0_20px_rgba(37,99,235,0.5)] transition-all">註冊</button>
             </div>
           </motion.div>
         ) : (
-          <motion.div
-            key="auth"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="z-10 w-full max-w-[380px] p-10 border border-slate-800 bg-black/60 backdrop-blur-2xl shadow-2xl relative"
-          >
-            {/* 標題與進度條 */}
-            <div className="flex items-center gap-3 mb-6">
-              {view === "login" ? (
-                <ShieldCheck className="text-blue-500" />
-              ) : (
-                <UserPlus className="text-blue-500" />
-              )}
-              <h2 className="text-xs tracking-[0.3em] uppercase text-slate-200 font-bold">
-                {view === "login"
-                  ? "Authentication_Gate"
-                  : `New_Protocol_Setup`}
-              </h2>
-            </div>
-
-            {view === "register" && regStep < 4 && <ProgressBar />}
-
-            {/* --- 內容區 --- */}
-
-            {/* 1. 登入 */}
-            {view === "login" && (
-              <div className="space-y-6">
-                <div className="group">
-                  <p className="text-[9px] text-blue-500/70 mb-1 tracking-widest uppercase font-bold">
-                    Credential_ID
-                  </p>
-                  <input
-                    type="text"
-                    placeholder="USER_NAME_OR_MAIL"
-                    className="w-full bg-transparent border-b border-slate-800 py-2 outline-none focus:border-blue-500 text-white text-sm"
-                    onChange={(e) =>
-                      setFormData({ ...formData, email: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="group">
-                  <p className="text-[9px] text-blue-500/70 mb-1 tracking-widest uppercase font-bold">
-                    Access_Key
-                  </p>
-                  <input
-                    type="password"
-                    placeholder="••••••••"
-                    className="w-full bg-transparent border-b border-slate-800 py-2 outline-none focus:border-blue-500 text-white text-sm"
-                    onChange={(e) =>
-                      setFormData({ ...formData, password: e.target.value })
-                    }
-                  />
-                </div>
-                <motion.button 
-  disabled={loading}
-  onClick={handleLogin}
-  className={`w-full py-4 mt-4 text-[10px] font-bold text-white uppercase tracking-[0.3em] transition-all ${
-    loading ? "bg-slate-700 cursor-not-allowed" : "bg-blue-700 hover:bg-blue-600 active:scale-95"
-  }`}
->
-  {loading ? "Authorizing..." : "Execute_Access"}
-</motion.button>
-
-                <div className="relative my-8">
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t border-slate-900"></span>
-                  </div>
-                  <div className="relative flex justify-center text-[8px] uppercase">
-                    <span className="bg-[#0c0c0c] px-2 text-slate-600 tracking-[0.3em]">
-                      External_Bridge
-                    </span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <button
-                    onClick={() => loginWithGoogle()}
-                    className="flex items-center justify-center gap-2 py-3 border border-slate-800 text-[9px] uppercase tracking-widest hover:bg-white/5 transition-all"
-                  >
-                    <img
-                      src="https://www.svgrepo.com/show/475656/google-color.svg"
-                      className="w-3 h-3"
-                    />{" "}
-                    Google
-                  </button>
-                  <button
-                    onClick={() => loginWithMicrosoft()}
-                    className="flex items-center justify-center gap-2 py-3 border border-slate-800 text-[9px] uppercase tracking-widest hover:bg-white/5 transition-all"
-                  >
-                    <img
-                      src="https://www.svgrepo.com/show/354068/microsoft-icon.svg"
-                      className="w-3 h-3"
-                    />{" "}
-                    MSAL
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* 2. 註冊 Step 1: 身分 */}
-            {view === "register" && regStep === 1 && (
-              <div className="space-y-6">
-                <div className="group">
-                  <p className="text-[9px] text-blue-500/70 mb-1 tracking-widest uppercase font-bold">
-                    Identity_Name
-                  </p>
-                  <input
-                    type="text"
-                    placeholder="YOUR_FULL_NAME"
-                    className="w-full bg-transparent border-b border-slate-800 py-2 outline-none focus:border-blue-500 text-white text-sm"
-                    onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="group">
-                  <p className="text-[9px] text-blue-500/70 mb-1 tracking-widest uppercase font-bold">
-                    Sector_Assignment
-                  </p>
-                  <select
-                    className="w-full bg-transparent border-b border-slate-800 py-2 outline-none focus:border-blue-500 text-white text-sm appearance-none"
-                    onChange={(e) =>
-                      setFormData({ ...formData, departmentId: e.target.value })
-                    }
-                  >
-                    <option value="" className="bg-[#0a0a0a]">
-                      SELECT_SECTOR
-                    </option>
-                    {departments.map((d) => (
-                      <option key={d.id} value={d.id} className="bg-[#0a0a0a]">
-                        {d.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <motion.button
-                  disabled={!formData.name || !formData.departmentId}
-                  onClick={() => setRegStep(2)}
-                  className="w-full bg-blue-700 py-4 mt-6 text-[10px] font-bold text-white uppercase tracking-[0.3em] disabled:opacity-30"
-                >
-                  Confirm_Identity
-                </motion.button>
-              </div>
-            )}
-
-            {/* 3. 註冊 Step 2: 協議 */}
-            {view === "register" && regStep === 2 && (
-              <div className="space-y-4">
-                <p className="text-[9px] text-slate-500 mb-6 tracking-widest text-center uppercase">
-                  Linking External Auth Protocols...
-                </p>
-                <button
-                  onClick={() => loginWithGoogle()}
-                  className="w-full py-4 border border-slate-800 text-[10px] uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-white/5 transition-all"
-                >
-                  <img
-                    src="https://www.svgrepo.com/show/475656/google-color.svg"
-                    className="w-4 h-4"
-                  />{" "}
-                  Continue via Google
-                </button>
-                <button
-                  onClick={() => loginWithMicrosoft()}
-                  className="w-full py-4 border border-slate-800 text-[10px] uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-white/5 transition-all"
-                >
-                  <img
-                    src="https://www.svgrepo.com/show/354068/microsoft-icon.svg"
-                    className="w-4 h-4"
-                  />{" "}
-                  Continue via Microsoft
-                </button>
-                <button
-                  onClick={() => setRegStep(3)}
-                  className="w-full text-[9px] text-slate-600 hover:text-blue-400 py-4 tracking-widest uppercase"
-                >
-                  Or Internal Mail Setup
-                </button>
-              </div>
-            )}
-
-            {/* 4. 註冊 Step 3: 安全 */}
-            {view === "register" && regStep === 3 && (
-              <div className="space-y-6">
-                <div className="group">
-                  <p className="text-[9px] text-blue-500/70 mb-1 tracking-widest uppercase font-bold">
-                    Mail_Terminal
-                  </p>
-                  <input
-                    type="email"
-                    placeholder="EMAIL_ADDR"
-                    className="w-full bg-transparent border-b border-slate-800 py-2 outline-none focus:border-blue-500 text-white text-sm"
-                    onChange={(e) =>
-                      setFormData({ ...formData, email: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="group">
-                  <p className="text-[9px] text-blue-500/70 mb-1 tracking-widest uppercase font-bold">
-                    Security_Phrase
-                  </p>
-                  <input
-                    type="password"
-                    placeholder="••••••••"
-                    className="w-full bg-transparent border-b border-slate-800 py-2 outline-none focus:border-blue-500 text-white text-sm"
-                    onChange={(e) =>
-                      setFormData({ ...formData, password: e.target.value })
-                    }
-                  />
-                </div>
-                <motion.button
-                  disabled={loading}
-                  onClick={handleFinalRegistration}
-                  className="w-full bg-blue-700 py-4 mt-4 text-[10px] font-bold text-white uppercase tracking-[0.3em]"
-                >
-                  Finalize_Registration
-                </motion.button>
-              </div>
-            )}
-
-            {/* 5. 註冊 Step 4: 審核 */}
-            {view === "register" && regStep === 4 && (
-              <div className="text-center py-10">
-                {/* --- 動態勾勾容器 --- */}
-                <div className="flex justify-center mb-6">
-                  <svg width="80" height="80" viewBox="0 0 80 80">
-                    {/* 背景圓圈動畫 */}
-                    <motion.circle
-                      cx="40"
-                      cy="40"
-                      r="35"
-                      stroke="#2563eb"
-                      strokeWidth="2"
-                      fill="transparent"
-                      initial={{ pathLength: 0, opacity: 0 }}
-                      animate={{ pathLength: 1, opacity: 1 }}
-                      transition={{ duration: 0.8, ease: "easeInOut" }}
-                    />
-                    {/* 勾勾路徑動畫 */}
-                    <motion.path
-                      d="M25 40 L35 50 L55 30"
-                      fill="transparent"
-                      stroke="#2563eb"
-                      strokeWidth="4"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      initial={{ pathLength: 0 }}
-                      animate={{ pathLength: 1 }}
-                      transition={{
-                        duration: 0.5,
-                        delay: 0.8,
-                        ease: "easeOut",
-                      }}
-                    />
-                  </svg>
-                </div>
-
-                <motion.h3
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 1.3 }}
-                  className="text-white text-xs font-bold tracking-widest uppercase mb-4"
-                >
-                  Identity_Logged
-                </motion.h3>
-
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 1.5 }}
-                  className="text-[9px] text-slate-500 leading-relaxed uppercase tracking-tighter"
-                >
-                  系統管理員正在審核您的權限。
-                  <br />
-                  通過後即可進入資料庫。
-                </motion.p>
-
-                <motion.button
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 1.8 }}
-                  whileHover="hover" // 連結子元件的 hover 狀態
-                  onClick={() => setView("home")}
-                  className="relative w-full border border-slate-800 py-4 mt-10 text-[10px] uppercase tracking-widest text-slate-400 overflow-hidden bg-black/40 transition-colors duration-300 hover:text-white hover:border-blue-500"
-                >
-                  {/* --- 這是流動的白光層 --- */}
-                  <motion.div
-                    variants={{
-                      hover: {
-                        x: ["-100%", "100%"], // 從左邊界外移動到右邊界外
-                      },
-                    }}
-                    transition={{
-                      duration: 0.6,
-                      ease: "linear",
-                      repeat: Infinity, // 如果你希望滑鼠放著就一直閃，可以加這行
-                      repeatDelay: 0.5,
-                    }}
-                    style={{
-                      position: "absolute",
-                      top: 0,
-                      left: 0,
-                      width: "50%", // 光束的寬度
-                      height: "100%",
-                      background:
-                        "linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent)",
-                      skewX: "-20deg", // 讓光束斜斜的更有動感
-                    }}
-                  />
-
-                  {/* 按鈕文字（確保在光束上方） */}
-                  <span className="relative z-10">Return_to_Main</span>
-                </motion.button>
-              </div>
-            )}
-
-            {/* 導覽按鈕 */}
-            {regStep < 4 && (
-              <div className="mt-8 flex flex-col items-center gap-4">
-                <button
-                  onClick={() => {
-                    setView(view === "login" ? "register" : "login");
-                    setRegStep(1);
-                  }}
-                  className="text-[9px] text-slate-600 hover:text-blue-400 transition-colors uppercase tracking-[0.2em]"
-                >
-                  {view === "login"
-                    ? "[ Request New Identity ]"
-                    : "[ Back to Access Portal ]"}
-                </button>
-                <button
-                  onClick={() => {
-                    setView("home");
-                    setRegStep(1);
-                  }}
-                  className="flex items-center justify-center gap-2 text-[9px] text-slate-500 hover:text-slate-200 transition-colors uppercase tracking-[0.3em]"
-                >
-                  <ChevronLeft size={12} /> Exit to Main Terminal
-                </button>
-              </div>
-            )}
-          </motion.div>
+          /* 💡 在這裡套用你的通用 ResponsiveContainer 模板 */
+          <ResponsiveContainer
+            title=""
+            desktopView={<AuthDesktop {...commonProps} />}
+            mobileView={<AuthMobile {...commonProps} />}
+          />
         )}
 
+        {/* 全域 Loading 遮罩 */}
         {loading && (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-md flex flex-col items-center justify-center"
-    >
-      <div className="relative">
-        {/* 外圈旋轉動畫 */}
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-          className="w-20 h-20 border-2 border-blue-500/20 border-t-blue-500 rounded-full"
-        />
-        <Cpu className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-blue-500 animate-pulse" size={32} />
-      </div>
-      <motion.p
-        animate={{ opacity: [0.4, 1, 0.4] }}
-        transition={{ duration: 1.5, repeat: Infinity }}
-        className="mt-6 text-[10px] tracking-[0.5em] text-blue-500 font-bold uppercase"
-      >
-        Syncing_with_Mainframe...
-      </motion.p>
-      <p className="mt-2 text-[8px] text-slate-500 uppercase tracking-widest">
-        Please do not refresh the terminal
-      </p>
-    </motion.div>
-  )}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-md flex flex-col items-center justify-center">
+            <div className="relative">
+              <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: "linear" }} className="w-20 h-20 border-2 border-blue-500/20 border-t-blue-500 rounded-full" />
+              <Cpu className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-blue-500 animate-pulse" size={32} />
+            </div>
+            <p className="mt-6 text-[10px] tracking-[0.5em] text-blue-500 font-bold uppercase animate-pulse">Syncing_with_Mainframe...</p>
+          </motion.div>
+        )}
       </AnimatePresence>
 
-      {/* 掃描線 */}
-      <div className="absolute bottom-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-blue-500/40 to-transparent animate-scan z-50 pointer-events-none" />
-      <style jsx>{`
-        @keyframes scan {
-          0% {
-            transform: translateY(0);
-            opacity: 0;
-          }
-          20% {
-            opacity: 1;
-          }
-          80% {
-            opacity: 1;
-          }
-          100% {
-            transform: translateY(-100vh);
-            opacity: 0;
-          }
-        }
-        .animate-scan {
-          animation: scan 12s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
+      <style jsx global>{`
+        @keyframes scan { 0% { transform: translateY(0); opacity: 0; } 20% { opacity: 1; } 80% { opacity: 1; } 100% { transform: translateY(-100vh); opacity: 0; } }
+        .animate-scan { animation: scan 12s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
       `}</style>
     </div>
   );

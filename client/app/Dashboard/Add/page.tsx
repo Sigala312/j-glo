@@ -61,11 +61,13 @@ export default function AddProjectPage() {
   const handleProjectSubmit = async () => {
     setLoading(true);
     try {
+      const currentUserId = localStorage.getItem('userId') || 'UNKNOWN';
       // 🚀 3. 改用 api.post，移除 headers 區塊
       await api.post('/api/projects', { 
         name: formData.projectName, 
         projectNo: formData.projectNo, 
-        clientId: formData.clientId 
+        clientId: formData.clientId ,
+        creatorId: currentUserId 
       });
       setStep(3);
     } catch (err) { alert("專案初始化失敗"); } 
