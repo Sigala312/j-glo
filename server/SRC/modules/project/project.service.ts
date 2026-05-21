@@ -6,20 +6,21 @@ export class ProjectService {
     name: string; 
     projectNo: string; 
     clientId: string; 
-    creatorId: string // 💡 這裡必須是必填的 string
+    creatorId: string // 💡 這裡前端等一下會傳入 email 進來
   }) {
     
     return await prisma.project.create({
       data: {
         name: data.name,
         projectNo: data.projectNo,
-        // 1. 綁定客戶
         client: {
           connect: { id: data.clientId }
         },
-        // 2. 💡 關鍵修正：綁定建立者使用者
+        // 💡 關鍵修正：改用 email 來綁定使用者！
         creator: {
-          connect: { id: data.creatorId } // 🔥 這樣就不會再噴 Argument creator is missing 了！
+          connect: { 
+            email: data.creatorId // 🔥 只要 email 對上，資料庫就能自動關聯！
+          }
         }
       },
       include: { client: true }

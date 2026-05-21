@@ -8,6 +8,24 @@ import StepClientAuth from './components/StepClientAuth';
 import StepProjectInit from './components/StepProjectInit';
 import StepSuccess from './components/StepSuccess';
 
+
+function decodeJwt(token: string) {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      window.atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    return JSON.parse(jsonPayload);
+  } catch (error) {
+    console.error("JWT 解析失敗:", error);
+    return null;
+  }
+}
+
 export default function AddProjectPage() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -61,26 +79,49 @@ export default function AddProjectPage() {
   const handleProjectSubmit = async () => {
   setLoading(true);
   try {
-    // 💡 嘗試從 localStorage 撈出當前登入使用者的 ID
-    // 請確認你登入成功時（在首頁或 Login 頁），存在 localStorage 的 key 叫什麼（例如 'userId' 或 'user'）
-    const currentUserId = localStorage.getItem('userId'); 
+    const allKeys = Object.keys(localStorage);
+    const tokenKey = allKeys.find(key => 
+      key.toLowerCase().includes('msal') && 
+      key.toLowerCase().includes('token')
+    );
 
-    if (!currentUserId) {
-      alert("無法取得當前登入憑證 (Missing User ID)，請重新登入。");
+    let token = tokenKey ? localStorage.getItem(tokenKey) : null;
+    if (!token) {
+      token = localStorage.getItem('token') || localStorage.getItem('accessToken');
+    }
+
+    if (!token) {
+      alert("安全性驗證失敗：找不到登入 Token，請重新登入。");
       setLoading(false);
       return;
     }
 
+    // 解碼 Token
+    const payload = decodeJwt(token);
+    console.log("微軟 Token 詳細內容:", payload);
+
+    // 💡 關鍵修正：從微軟 Token 中撈出 Email
+    // 微軟通常存放在 'preferred_username'、'email' 或 'upn' 欄位中
+    const userEmail = payload?.preferred_username || payload?.email || payload?.upn;
+
+    if (!userEmail) {
+      alert("安全性驗證失敗：Token 內缺少可識別的 Email 帳號。");
+      setLoading(false);
+      return;
+    }
+
+    // 送往後端 (將 userEmail 帶入 creatorId 欄位中發送)
     await api.post('/api/projects', { 
       name: formData.projectName, 
       projectNo: formData.projectNo, 
       clientId: formData.clientId,
-      creatorId: currentUserId // 🔥 傳送真實的建立者 ID 給後端
+      creatorId: userEmail // 🔥 把 email 塞進去送給後端
     });
     
     setStep(3);
-  } catch (err) { 
-    alert("資料節點寫入失敗"); 
+  } catch (err: any) { 
+    console.error("專案送出失敗:", err);
+    alert(`資料節點寫入失敗: ${err.message || '未知錯誤'}`); 
   } finally { 
     setLoading(false); 
   }
