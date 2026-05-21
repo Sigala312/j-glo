@@ -6,28 +6,22 @@ export class ProjectService {
     name: string; 
     projectNo: string; 
     clientId: string; 
-    creatorId?: string // 這裡可能是 string | undefined
+    creatorId: string // 💡 這裡必須是必填的 string
   }) {
     
-    // 💡 1. 建立一個基礎的 Prisma 寫入物件，把必定有值的欄位放進去
-    const prismaData: any = {
-      name: data.name,
-      projectNo: data.projectNo,
-      client: {
-        connect: {
-          id: data.clientId
-        }
-      }
-    };
-
-    // 💡 2. 嚴格檢查：只有當 creatorId 真的有值（不是 undefined）時，才動態塞入這個 Key
-    if (data.creatorId !== undefined && data.creatorId !== null) {
-      prismaData.creatorId = data.creatorId;
-    }
-
-    // 💡 3. 把乾淨、符合規範的物件丟給 Prisma
     return await prisma.project.create({
-      data: prismaData,
+      data: {
+        name: data.name,
+        projectNo: data.projectNo,
+        // 1. 綁定客戶
+        client: {
+          connect: { id: data.clientId }
+        },
+        // 2. 💡 關鍵修正：綁定建立者使用者
+        creator: {
+          connect: { id: data.creatorId } // 🔥 這樣就不會再噴 Argument creator is missing 了！
+        }
+      },
       include: { client: true }
     });
   }

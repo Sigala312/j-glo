@@ -59,20 +59,32 @@ export default function AddProjectPage() {
 
   // 邏輯: 處理專案提交 (Step 2)
   const handleProjectSubmit = async () => {
-    setLoading(true);
-    try {
-      const currentUserId = localStorage.getItem('userId') || 'UNKNOWN';
-      // 🚀 3. 改用 api.post，移除 headers 區塊
-      await api.post('/api/projects', { 
-        name: formData.projectName, 
-        projectNo: formData.projectNo, 
-        clientId: formData.clientId ,
-        creatorId: currentUserId 
-      });
-      setStep(3);
-    } catch (err) { alert("專案初始化失敗"); } 
-    finally { setLoading(false); }
-  };
+  setLoading(true);
+  try {
+    // 💡 嘗試從 localStorage 撈出當前登入使用者的 ID
+    // 請確認你登入成功時（在首頁或 Login 頁），存在 localStorage 的 key 叫什麼（例如 'userId' 或 'user'）
+    const currentUserId = localStorage.getItem('userId'); 
+
+    if (!currentUserId) {
+      alert("無法取得當前登入憑證 (Missing User ID)，請重新登入。");
+      setLoading(false);
+      return;
+    }
+
+    await api.post('/api/projects', { 
+      name: formData.projectName, 
+      projectNo: formData.projectNo, 
+      clientId: formData.clientId,
+      creatorId: currentUserId // 🔥 傳送真實的建立者 ID 給後端
+    });
+    
+    setStep(3);
+  } catch (err) { 
+    alert("資料節點寫入失敗"); 
+  } finally { 
+    setLoading(false); 
+  }
+};
 
   return (
     <div className="max-w-4xl mx-auto">
