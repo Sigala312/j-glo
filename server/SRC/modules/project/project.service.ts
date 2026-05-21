@@ -6,7 +6,7 @@ export class ProjectService {
     name: string; 
     projectNo: string; 
     clientId: string; 
-    creatorId: string // 💡 這裡前端等一下會傳入 email 進來
+    creatorId: string // 💡 前端傳過來的會是 "cmo9tj2rs..." 這種 CUID 字串
   }) {
     
     return await prisma.project.create({
@@ -16,10 +16,10 @@ export class ProjectService {
         client: {
           connect: { id: data.clientId }
         },
-        // 💡 關鍵修正：改用 email 來綁定使用者！
+        // 💡 終極修正：直接使用真實的 User ID 進行綁定！
         creator: {
           connect: { 
-            email: data.creatorId // 🔥 只要 email 對上，資料庫就能自動關聯！
+            id: data.creatorId // 🔥 這樣就完全符合 Prisma 所規定的 id 欄位了！
           }
         }
       },

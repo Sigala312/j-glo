@@ -76,51 +76,40 @@ export default function AddProjectPage() {
   };
 
   // 邏輯: 處理專案提交 (Step 2)
-  const handleProjectSubmit = async () => {
+ const handleProjectSubmit = async () => {
   setLoading(true);
   try {
-    const allKeys = Object.keys(localStorage);
-    const tokenKey = allKeys.find(key => 
-      key.toLowerCase().includes('msal') && 
-      key.toLowerCase().includes('token')
-    );
-
-    let token = tokenKey ? localStorage.getItem(tokenKey) : null;
-    if (!token) {
-      token = localStorage.getItem('token') || localStorage.getItem('accessToken');
-    }
+    const token = localStorage.getItem('token');
 
     if (!token) {
-      alert("安全性驗證失敗：找不到登入 Token，請重新登入。");
+      alert("安全性驗證失敗：找不到登入 token 快取，請重新登入。");
       setLoading(false);
       return;
     }
 
-    // 解碼 Token
+    // 💡 1. 解碼 Token 拿到物件
     const payload = decodeJwt(token);
-    console.log("微軟 Token 詳細內容:", payload);
 
-    // 💡 關鍵修正：從微軟 Token 中撈出 Email
-    // 微軟通常存放在 'preferred_username'、'email' 或 'upn' 欄位中
-    const userEmail = payload?.preferred_username || payload?.email || payload?.upn;
+    // 💡 2. 精準提取你剛才截圖中看到的 "userId" 欄位
+    const currentUserId = payload?.userId;
 
-    if (!userEmail) {
-      alert("安全性驗證失敗：Token 內缺少可識別的 Email 帳號。");
+    if (!currentUserId) {
+      alert("安全性驗證失敗：解碼後的 Token 內找不到 userId。");
       setLoading(false);
       return;
     }
 
-    // 送往後端 (將 userEmail 帶入 creatorId 欄位中發送)
+    // 💡 3. 送往後端
     await api.post('/api/projects', { 
       name: formData.projectName, 
       projectNo: formData.projectNo, 
       clientId: formData.clientId,
-      creatorId: userEmail // 🔥 把 email 塞進去送給後端
+      creatorId: currentUserId // 🔥 將真實的 "cmo9tj2rs..." 傳過去
     });
     
     setStep(3);
   } catch (err: any) { 
-    console.error("專案送出失敗:", err);
+    console.error("專案送出徹底失敗:", err);
     alert(`資料節點寫入失敗: ${err.message || '未知錯誤'}`); 
   } finally { 
     setLoading(false); 
