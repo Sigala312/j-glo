@@ -87,24 +87,25 @@ export default function AddProjectPage() {
       return;
     }
 
-    // 💡 1. 解碼 Token 拿到物件
+    // 1. 解碼 Token
     const payload = decodeJwt(token);
+    console.log("當前登入 Token 的完整 Payload:", payload);
 
-    // 💡 2. 精準提取你剛才截圖中看到的 "userId" 欄位
-    const currentUserId = payload?.userId;
+    // 💡 2. 雙重保險：不管後端是用 userId 還是 id，哪一個有值就拿哪一個！
+    const currentUserId = payload?.userId || payload?.id;
 
     if (!currentUserId) {
-      alert("安全性驗證失敗：解碼後的 Token 內找不到 userId。");
+      alert("安全性驗證失敗：解碼後的 Token 內找不到有效的使用者 ID。");
       setLoading(false);
       return;
     }
 
-    // 💡 3. 送往後端
+    // 3. 送往後端 (後端此時是完美的：creator: { connect: { id: data.creatorId } })
     await api.post('/api/projects', { 
       name: formData.projectName, 
       projectNo: formData.projectNo, 
       clientId: formData.clientId,
-      creatorId: currentUserId // 🔥 將真實的 "cmo9tj2rs..." 傳過去
+      creatorId: currentUserId // 🔥 這次不管是誰登入，都保證會是一串真實的 ID！
     });
     
     setStep(3);

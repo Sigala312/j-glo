@@ -12,30 +12,36 @@ export class ProjectController {
   /**
    * 建立新專案
    */
-  static async create(req: Request, res: Response) {
+  // 🟢 正確的 Controller 修正寫法
+static async create(req: Request, res: Response) {
     try {
-      // 建議: 如果中間件有正確設定，這裡可以用更優雅的方式拿 user
-      const creatorId = (req as any).user?.userId;
-      const { name, projectNo, clientId } = req.body;
+      // 💡 1. 確保從 req.body 精準拿取前端傳來的 creatorId
+      const { name, projectNo, clientId, creatorId } = req.body;
 
-      // 簡單的資料驗證
-      if (!name || !projectNo || !clientId) {
-        return res.status(400).json({ message: "MISSING_REQUIRED_FIELDS" });
+      // 💡 2. 安全防禦：如果前端沒傳，直接在 Controller 攔截並報錯，不讓 Prisma 崩潰
+      if (!creatorId) {
+        return res.status(400).json({ 
+          error: "BAD_REQUEST", 
+          message: "後端 Controller 拒絕對接：接收到的 creatorId 為空，請檢查前端 Token 狀態。" 
+        });
       }
 
-      const project = await ProjectService.createProject({
+      // 💡 3. 呼叫 Service 建立專案
+      const result = await ProjectService.createProject({
         name,
         projectNo,
         clientId,
-        creatorId,
+        creatorId
       });
 
-      return res.status(201).json(project);
+      // 💡 4. 回傳成功結果
+      return res.status(201).json(result);
     } catch (error: any) {
       console.error("[Project Create Error]:", error);
-      return res
-        .status(500)
-        .json({ message: error.message || "INTERNAL_SERVER_ERROR" });
+      return res.status(500).json({ 
+        error: "INTERNAL_SERVER_ERROR", 
+        message: error.message || "建立專案時伺服器發生未知錯誤" 
+      });
     }
   }
 
