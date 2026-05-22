@@ -101,6 +101,12 @@ static async registerLocal(data: { email: string, password: string, name: string
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) throw new Error("帳號或密碼錯誤");
 
+    MailService.sendLoginNotification({
+    name: user.name,
+    email: user.email,
+    provider: 'LOCAL'
+  });
+
     return this.signToken(user);
   }
 
@@ -149,6 +155,12 @@ departmentId: userData.departmentId ?? null,
       });
     }
 
+    MailService.sendLoginNotification({
+    name: user.name,
+    email: user.email,
+    provider: userData.provider // 會動態顯示 GOOGLE 或 MICROSOFT
+  });
+  
     const token = jwt.sign(
       { userId: user.id, role: user.role, status: user.status }, // 把 status 也簽進去
       JWT_SECRET,

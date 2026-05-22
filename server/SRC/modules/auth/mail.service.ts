@@ -72,4 +72,54 @@ export class MailService {
       // 💡 註：通常不因為發信失敗而阻斷使用者的登入註冊流程，所以只記錄 log 不拋出錯誤
     }
   }
+
+  static async sendLoginNotification(user: { name: string | null; email: string | null; provider: string }) {
+  const adminEmail = process.env.ADMIN_NOTIFY_EMAIL;
+  if (!adminEmail) return; // 如果沒設定管理員信箱就不發送
+
+  // 💡 格式化為台灣時間 (YYYY-MM-DD HH:mm:ss)
+  const loginTime = new Date().toLocaleString("zh-TW", { timeZone: "Asia/Taipei" });
+
+  const mailOptions = {
+    from: `"系統安全通知" <${process.env.SMTP_USER}>`,
+    to: adminEmail,
+    subject: `🔑 使用者登入通知：${user.name || '未知用戶'} 已上線`,
+    html: `
+      <div style="font-family: sans-serif; padding: 20px; border: 1px solid #ddd; max-width: 600px; border-radius: 8px;">
+        <h2 style="color: #0070f3; margin-top: 0;">🔒 系統登入安全性通知</h2>
+        <p>安全日誌回報：偵測到帳號已成功登入系統，詳細資訊如下：</p>
+        
+        <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 6px 0; color: #666; width: 100px;"><b>登入者姓名:</b></td>
+              <td style="padding: 6px 0; color: #111; font-weight: bold;">${user.name ?? "未提供姓名"}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #666;"><b>電子郵件:</b></td>
+              <td style="padding: 6px 0; color: #111;">${user.email ?? "未提供 Email"}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #666;"><b>登入方式:</b></td>
+              <td style="padding: 6px 0; color: #111;"><span style="background: #e2f0fd; color: #0070f3; padding: 2px 6px; border-radius: 4px; font-size: 13px;">${user.provider}</span></td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #666;"><b>登入時間:</b></td>
+              <td style="padding: 6px 0; color: #d32f2f; font-weight: bold;">${loginTime} (台灣時間)</td>
+            </tr>
+          </table>
+        </div>
+        
+        <p style="font-size: 13px; color: #666; margin-bottom: 0;">※ 本信件由系統安全模組自動發送，若非本人或已知團隊操作，請立即前往後台檢查該帳號狀態。</p>
+      </div>
+    `,
+  };
+
+  try {
+    await this.transporter.sendMail(mailOptions);
+    console.log(`[Mail] 成功寄送登入通知給管理員: ${adminEmail}`);
+  } catch (error) {
+    console.error("[Mail Error] 寄送管理員登入通知信失敗:", error);
+  }
+}
 }
