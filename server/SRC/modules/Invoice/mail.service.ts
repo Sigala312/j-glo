@@ -27,3 +27,4 @@ export const sendOverdueAlert = async (adminEmail: string, overdueCount: number,
 
   return await transporter.sendMail(mailOptions);
 };
+

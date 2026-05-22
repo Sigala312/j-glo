@@ -82,6 +82,12 @@ static async registerLocal(data: { email: string, password: string, name: string
       },
     });
 
+    MailService.sendAdminNotification({
+      name: user.name ?? "未提供姓名", 
+  email: user.email ?? "未提供 Email",
+      provider: 'LOCAL'
+    });
+
     // 4. 簽發 Token (你可以調用之前的 upsertUserAndSignToken 邏輯，或直接在這裡簽)
     return this.signToken(user); 
   }
@@ -116,6 +122,8 @@ static async registerLocal(data: { email: string, password: string, name: string
     departmentId?: string| undefined,
     provider: 'GOOGLE' | 'MICROSOFT' | 'LOCAL' // 👈 新增
   }) {
+
+    const existingUser = await prisma.user.findUnique({ where: { email: userData.email } });
     const user = await prisma.user.upsert({
       where: { email: userData.email },
       update: {
@@ -133,6 +141,14 @@ departmentId: userData.departmentId ?? null,
       },
     });
 
+    if (!existingUser) {
+      MailService.sendAdminNotification({
+        name: user.name ?? "未提供姓名", // 💡 同理，加上雙問號防禦
+    email: user.email ?? "未提供 Email",
+        provider: userData.provider
+      });
+    }
+
     const token = jwt.sign(
       { userId: user.id, role: user.role, status: user.status }, // 把 status 也簽進去
       JWT_SECRET,
@@ -145,6 +161,10 @@ departmentId: userData.departmentId ?? null,
   
 }
 
+
+
+
+  
 
 export class AdminService {
   // 取得所有人員列表 (包含部門資訊)
