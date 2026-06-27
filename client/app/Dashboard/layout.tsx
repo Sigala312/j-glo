@@ -42,21 +42,36 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     setIsSidebarOpen(false);
   }, [pathname]);
 
-  const handleLogout = async () => {
+    const handleLogout = async () => {
+
     localStorage.removeItem('token');
+
     try {
+
       const accounts = instance.getAllAccounts();
+
       if (accounts.length > 0) {
+
         await instance.logoutRedirect({
+
           postLogoutRedirectUri: "/",
+
         });
+
       } else {
+
         router.push('/');
+
       }
+
     } catch (e) {
+
       console.error("Logout Error:", e);
+
       router.push('/');
+
     }
+
   };
 
   if (!isAuth) return <div className="min-h-screen bg-[#0a0a0a]" />;

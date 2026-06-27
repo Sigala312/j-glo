@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import api from '../../../../lib/api';
 import { 
   Receipt, Plus, ArrowLeft, Loader2, 
-  AlertCircle, DollarSign, ChevronRight
+  AlertCircle, DollarSign, Edit3, Trash2
 } from 'lucide-react';
 
 export default function PurchaseInvoicePage() {
@@ -23,12 +23,16 @@ function PurchaseInvoiceContent() {
   
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showAddModal, setShowAddModal] = useState(false);
   const [poDetail, setPoDetail] = useState<any>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const [formData, setFormData] = useState({
-    amount: 0,
-  });
+  // 彈窗控制狀態
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  
+  // 表單資料狀態
+  const [formData, setFormData] = useState({ amount: 0 });
+  const [editingInvoice, setEditingInvoice] = useState<any>(null); // 紀錄當前正在編輯哪一筆發票
 
   useEffect(() => {
     if (targetPoId) {
@@ -36,14 +40,12 @@ function PurchaseInvoiceContent() {
     }
   }, [targetPoId]);
 
- // 1. 抓取採購單詳情與發票列表
+  // 1. 抓取列表 (查)
   const fetchInvoices = async () => {
     if (!targetPoId) return;
     setLoading(true);
     try {
-      // 🚀 簡化為 api.get，網址使用樣板字串
       const res = await api.get(`/api/purchaseOrder/${targetPoId}`);
-
       setPoDetail(res.data);
       setInvoices(res.data.purchaseInvoices || []);
     } catch (err) {
@@ -53,15 +55,16 @@ function PurchaseInvoiceContent() {
     }
   };
 
-  // 2. 建立新的採購發票
+  // 2. 建立新發票 (增)
   const handleCreateInvoice = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (formData.amount <= 0) return alert("請輸入有效的請款金額");
+    
+    setIsSubmitting(true);
     try {
-      // 自動生成編號邏輯 (保持不變)
       const nextIndex = invoices.length + 1;
       const autoInvoiceNo = `${poDetail?.poNumber || 'INV'}-${nextIndex}`;
 
-      // 🚀 簡化為 api.post，移除 headers 參數
       await api.post(`/api/purchaseInvoice`, {
         amount: Number(formData.amount),
         purchaseOrderId: targetPoId,
@@ -71,9 +74,57 @@ function PurchaseInvoiceContent() {
 
       setShowAddModal(false);
       setFormData({ amount: 0 });
-      fetchInvoices();
+      await fetchInvoices();
     } catch (err) {
-      alert("建立發票失敗，請確認資料正確性");
+      alert("建立發票失敗");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // 3. 開啟編輯彈窗並預填資料
+  const openEditModal = (invoice: any) => {
+    setEditingInvoice(invoice);
+    setFormData({ amount: invoice.amount });
+    setShowEditModal(true);
+  };
+
+  // 4. 更新發票金額 (改/更新)
+  const handleUpdateInvoice = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (formData.amount <= 0) return alert("請輸入有效的請款金額");
+    if (!editingInvoice) return;
+
+    setIsSubmitting(true);
+    try {
+      // 🚀 串接後端更新 API：/api/purchaseInvoice/:id
+      await api.put(`/api/purchaseInvoice/${editingInvoice.id}`, {
+        amount: Number(formData.amount),
+        // 如果後端需要帶入其他不變的欄位，可在這補齊
+      });
+
+      setShowEditModal(false);
+      setEditingInvoice(null);
+      setFormData({ amount: 0 });
+      await fetchInvoices(); // 重新整理列表
+    } catch (err) {
+      console.error("更新失敗", err);
+      alert("更新發票失敗");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // 5. 刪除發票 (刪)
+  const handleDeleteInvoice = async (invoiceId: string, invoiceNo: string) => {
+    if (!confirm(`⚠️ 確定要刪除發票 [${invoiceNo}] 嗎？此操作無法還原。`)) return;
+
+    try {
+      await api.delete(`/api/purchaseInvoice/${invoiceId}`);
+      await fetchInvoices();
+    } catch (err) {
+      console.error("刪除失敗", err);
+      alert("刪除發票失敗");
     }
   };
 
@@ -101,7 +152,10 @@ function PurchaseInvoiceContent() {
           </div>
 
           <button 
-            onClick={() => setShowAddModal(true)}
+            onClick={() => {
+              setFormData({ amount: 0 });
+              setShowAddModal(true);
+            }}
             className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2.5 rounded-sm font-bold text-[13px] flex items-center gap-2 transition-all shadow-[0_0_20px_rgba(37,99,235,0.2)] active:scale-95"
           >
             <Plus size={16} /> 新增發票
@@ -123,7 +177,7 @@ function PurchaseInvoiceContent() {
                     <th className="px-6 py-4">發票編號</th>
                     <th className="px-6 py-4 text-right">金額</th>
                     <th className="px-6 py-4">建立日期</th>
-                    <th className="px-6 py-4 w-10"></th>
+                    <th className="px-6 py-4 text-right w-32">操作</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/50">
@@ -138,9 +192,23 @@ function PurchaseInvoiceContent() {
                       <td className="px-6 py-4 text-[12px] text-slate-500 font-mono">
                         {new Date(inv.createdAt).toLocaleDateString('zh-TW')}
                       </td>
-                      <td className="px-6 py-4 text-right">
-                        <button className="text-slate-600 group-hover:text-white transition-colors">
-                          <ChevronRight size={14} />
+                      <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
+                        {/* 🚀 編輯按鈕 */}
+                        <button 
+                          onClick={() => openEditModal(inv)}
+                          className="text-slate-600 hover:text-blue-400 p-1 rounded-sm hover:bg-blue-500/10 transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
+                          title="修改發票金額"
+                        >
+                          <Edit3 size={15} />
+                        </button>
+                        
+                        {/* 🚀 刪除按鈕 */}
+                        <button 
+                          onClick={() => handleDeleteInvoice(inv.id, inv.invoiceNo)}
+                          className="text-slate-600 hover:text-red-400 p-1 rounded-sm hover:bg-red-500/10 transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
+                          title="刪除此發票紀錄"
+                        >
+                          <Trash2 size={15} />
                         </button>
                       </td>
                     </tr>
@@ -157,7 +225,7 @@ function PurchaseInvoiceContent() {
         </div>
       </div>
 
-      {/* 新增發票彈窗 */}
+      {/* --- 彈窗模組 A：新增發票 --- */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-[100] p-4">
           <div className="bg-[#0f1115] border border-blue-500/30 w-full max-w-md p-8 shadow-[0_0_100px_rgba(37,99,235,0.15)]">
@@ -170,17 +238,14 @@ function PurchaseInvoiceContent() {
 
             <form onSubmit={handleCreateInvoice} className="space-y-6">
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest flex justify-between">
-                  <span>請款金額</span>
-                  <span className="text-blue-500">美元 (USD)</span>
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">
+                  請款金額
                 </label>
                 <div className="relative">
                   <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" size={18} />
                   <input 
-                    type="number" 
-                    required
-                    autoFocus
-                    className="w-full bg-slate-900 border border-slate-800 p-4 pl-10 text-2xl text-emerald-400 font-mono outline-none focus:border-blue-500 transition-all"
+                    type="number" required autoFocus min="0.01" step="any" disabled={isSubmitting}
+                    className="w-full bg-slate-900 border border-slate-800 p-4 pl-10 text-2xl text-emerald-400 font-mono outline-none focus:border-blue-500 transition-all disabled:opacity-50"
                     placeholder="0.00"
                     value={formData.amount || ''}
                     onChange={e => setFormData({ amount: parseFloat(e.target.value) })}
@@ -190,17 +255,68 @@ function PurchaseInvoiceContent() {
 
               <div className="flex gap-4 pt-2">
                 <button 
-                  type="button" 
+                  type="button" disabled={isSubmitting}
                   onClick={() => setShowAddModal(false)}
                   className="flex-1 py-3 text-[12px] font-bold text-slate-500 hover:text-white transition-colors"
                 >
                   取消
                 </button>
                 <button 
-                  type="submit"
-                  className="flex-1 bg-blue-600 hover:bg-blue-500 text-white text-[12px] font-bold py-3 tracking-widest shadow-[0_0_20px_rgba(37,99,235,0.3)] active:scale-95 transition-all"
+                  type="submit" disabled={isSubmitting}
+                  className="flex-1 bg-blue-600 hover:bg-blue-500 text-white text-[12px] font-bold py-3 tracking-widest shadow-[0_0_20px_rgba(37,99,235,0.3)] active:scale-95 transition-all flex items-center justify-center gap-2"
                 >
-                  確認並生成
+                  {isSubmitting ? <Loader2 className="animate-spin" size={14} /> : "確認並生成"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* --- 🚀 彈窗模組 B：更新（編輯）發票 --- */}
+      {showEditModal && (
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-[100] p-4">
+          <div className="bg-[#0f1115] border border-yellow-500/30 w-full max-w-md p-8 shadow-[0_0_100px_rgba(234,179,8,0.15)]">
+            <h2 className="text-xl font-black text-white mb-2 italic border-l-4 border-yellow-500 pl-4 uppercase tracking-tighter">
+              變更發票內容
+            </h2>
+            <p className="text-[11px] text-slate-500 mb-6 font-mono">
+              正在修改發票：<span className="text-yellow-400">{editingInvoice?.invoiceNo}</span>
+            </p>
+
+            <form onSubmit={handleUpdateInvoice} className="space-y-6">
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">
+                  修正後金額
+                </label>
+                <div className="relative">
+                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" size={18} />
+                  <input 
+                    type="number" required autoFocus min="0.01" step="any" disabled={isSubmitting}
+                    className="w-full bg-slate-900 border border-slate-800 p-4 pl-10 text-2xl text-yellow-400 font-mono outline-none focus:border-yellow-500 transition-all disabled:opacity-50"
+                    placeholder="0.00"
+                    value={formData.amount || ''}
+                    onChange={e => setFormData({ amount: parseFloat(e.target.value) })}
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-4 pt-2">
+                <button 
+                  type="button" disabled={isSubmitting}
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setEditingInvoice(null);
+                  }}
+                  className="flex-1 py-3 text-[12px] font-bold text-slate-500 hover:text-white transition-colors"
+                >
+                  取消變更
+                </button>
+                <button 
+                  type="submit" disabled={isSubmitting}
+                  className="flex-1 bg-yellow-600 hover:bg-yellow-500 text-black text-[12px] font-black py-3 tracking-widest shadow-[0_0_20px_rgba(234,179,8,0.3)] active:scale-95 transition-all flex items-center justify-center gap-2"
+                >
+                  {isSubmitting ? <Loader2 className="animate-spin" size={14} /> : "同步更新資料"}
                 </button>
               </div>
             </form>
